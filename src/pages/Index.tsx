@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import { FileUploader } from "@/components/FileUploader";
+import { ImageUploader } from "@/components/ImageUploader";
+import { VideoUploader } from "@/components/VideoUploader";
 import { Timeline, MediaItem } from "@/components/Timeline";
 import { PreviewPanel } from "@/components/PreviewPanel";
 import { ExportPanel, ExportSettings } from "@/components/ExportPanel";
@@ -11,10 +12,11 @@ import { toast } from "sonner";
 
 const steps: Step[] = [
   { id: 1, title: "Cím", description: "Video címe" },
-  { id: 2, title: "Média", description: "Fájlok feltöltése" },
-  { id: 3, title: "Szerkesztés", description: "Timeline" },
-  { id: 4, title: "Előnézet", description: "Megtekintés" },
-  { id: 5, title: "Export", description: "Videó mentése" },
+  { id: 2, title: "Képek", description: "Képek feltöltése" },
+  { id: 3, title: "Videók", description: "Videók feltöltése" },
+  { id: 4, title: "Szerkesztés", description: "Timeline" },
+  { id: 5, title: "Előnézet", description: "Megtekintés" },
+  { id: 6, title: "Export", description: "Videó mentése" },
 ];
 
 const Index = () => {
@@ -30,17 +32,25 @@ const Index = () => {
     toast.success("Cím mentve!");
   }, []);
 
-  const handleFilesAdded = useCallback((files: File[]) => {
-    const newItems: MediaItem[] = files.map((file) => {
-      const isVideo = file.type.startsWith("video/");
-      return {
-        id: Math.random().toString(36).substr(2, 9),
-        file,
-        type: isVideo ? "video" : "image",
-        duration: isVideo ? 5 : 3,
-        thumbnail: URL.createObjectURL(file),
-      };
-    });
+  const handleImagesAdded = useCallback((files: File[]) => {
+    const newItems: MediaItem[] = files.map((file) => ({
+      id: Math.random().toString(36).substr(2, 9),
+      file,
+      type: "image" as const,
+      duration: 3,
+      thumbnail: URL.createObjectURL(file),
+    }));
+    setMediaItems((prev) => [...prev, ...newItems]);
+  }, []);
+
+  const handleVideosAdded = useCallback((files: File[]) => {
+    const newItems: MediaItem[] = files.map((file) => ({
+      id: Math.random().toString(36).substr(2, 9),
+      file,
+      type: "video" as const,
+      duration: 5,
+      thumbnail: URL.createObjectURL(file),
+    }));
     setMediaItems((prev) => [...prev, ...newItems]);
   }, []);
 
@@ -72,9 +82,13 @@ const Index = () => {
     toast.info("Az exportálás funkció fejlesztés alatt áll");
   }, []);
 
+  const getImageCount = () => mediaItems.filter((item) => item.type === "image").length;
+  const getVideoCount = () => mediaItems.filter((item) => item.type === "video").length;
+
   const canGoNext = () => {
-    if (currentStep === 2 && mediaItems.length === 0) return false;
-    return currentStep < 5;
+    if (currentStep === 2 && getImageCount() === 0) return false;
+    if (currentStep === 3 && getVideoCount() === 0) return false;
+    return currentStep < 6;
   };
 
   const canGoPrev = () => currentStep > 1;
@@ -126,20 +140,25 @@ const Index = () => {
             />
           )}
 
-          {/* Step 2: File Upload */}
+          {/* Step 2: Image Upload */}
           {currentStep === 2 && (
             <div className="max-w-4xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
-                <h2 className="text-2xl font-bold">Fájlok feltöltése</h2>
+                <h2 className="text-2xl font-bold">Képek feltöltése</h2>
                 <p className="text-muted-foreground">
-                  Adj hozzá képeket és videókat a projekthez
+                  Adj hozzá képeket a videó projektedhez
                 </p>
+                {getImageCount() > 0 && (
+                  <p className="text-sm text-primary font-medium">
+                    {getImageCount()} kép hozzáadva
+                  </p>
+                )}
               </div>
-              <FileUploader onFilesAdded={handleFilesAdded} />
-              {mediaItems.length > 0 && (
+              <ImageUploader onFilesAdded={handleImagesAdded} />
+              {getImageCount() > 0 && (
                 <div className="bg-card rounded-lg border border-border p-6">
                   <Timeline
-                    items={mediaItems}
+                    items={mediaItems.filter((item) => item.type === "image")}
                     onRemove={handleRemove}
                     onReorder={handleReorder}
                     onDurationChange={handleDurationChange}
@@ -149,14 +168,50 @@ const Index = () => {
             </div>
           )}
 
-          {/* Step 3: Timeline Editing */}
+          {/* Step 3: Video Upload */}
           {currentStep === 3 && (
+            <div className="max-w-4xl mx-auto space-y-6">
+              <div className="text-center space-y-2 mb-6">
+                <h2 className="text-2xl font-bold">Videók feltöltése</h2>
+                <p className="text-muted-foreground">
+                  Adj hozzá videókat a projektedhez
+                </p>
+                {getVideoCount() > 0 && (
+                  <p className="text-sm text-accent font-medium">
+                    {getVideoCount()} videó hozzáadva
+                  </p>
+                )}
+              </div>
+              <VideoUploader onFilesAdded={handleVideosAdded} />
+              {getVideoCount() > 0 && (
+                <div className="bg-card rounded-lg border border-border p-6">
+                  <Timeline
+                    items={mediaItems.filter((item) => item.type === "video")}
+                    onRemove={handleRemove}
+                    onReorder={handleReorder}
+                    onDurationChange={handleDurationChange}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 4: Timeline Editing */}
+          {currentStep === 4 && (
             <div className="max-w-6xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
                 <h2 className="text-2xl font-bold">Timeline szerkesztés</h2>
                 <p className="text-muted-foreground">
                   Rendezd át az elemeket és állítsd be az időtartamokat
                 </p>
+                <div className="flex gap-4 justify-center text-sm">
+                  <span className="text-primary font-medium">
+                    {getImageCount()} kép
+                  </span>
+                  <span className="text-accent font-medium">
+                    {getVideoCount()} videó
+                  </span>
+                </div>
               </div>
               <div className="bg-card rounded-lg border border-border p-6">
                 <Timeline
@@ -169,8 +224,8 @@ const Index = () => {
             </div>
           )}
 
-          {/* Step 4: Preview */}
-          {currentStep === 4 && (
+          {/* Step 5: Preview */}
+          {currentStep === 5 && (
             <div className="max-w-4xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
                 <h2 className="text-2xl font-bold">Előnézet</h2>
@@ -182,8 +237,8 @@ const Index = () => {
             </div>
           )}
 
-          {/* Step 5: Export */}
-          {currentStep === 5 && (
+          {/* Step 6: Export */}
+          {currentStep === 6 && (
             <div className="max-w-2xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
                 <h2 className="text-2xl font-bold">Export beállítások</h2>
@@ -211,7 +266,7 @@ const Index = () => {
                 <ArrowLeft className="w-4 h-4" />
                 Vissza
               </Button>
-              {currentStep < 5 && (
+              {currentStep < 6 && (
                 <Button
                   onClick={handleNext}
                   size="lg"
