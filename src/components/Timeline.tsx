@@ -9,8 +9,7 @@ export interface MediaItem {
   duration: number;
   thumbnail?: string;
   focalPoint?: { x: number; y: number };
-  startTime?: number;
-  endTime?: number;
+  clips?: { id: string; startTime: number; endTime: number }[];
 }
 
 interface TimelineProps {

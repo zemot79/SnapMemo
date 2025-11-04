@@ -52,6 +52,7 @@ const Index = () => {
       type: "video" as const,
       duration: 5,
       thumbnail: URL.createObjectURL(file),
+      clips: [],
     }));
     setMediaItems((prev) => [...prev, ...newItems]);
   }, []);
@@ -89,14 +90,17 @@ const Index = () => {
     []
   );
 
-  const handleClipChange = useCallback(
-    (id: string, startTime: number, endTime: number) => {
+  const handleClipsChange = useCallback(
+    (id: string, clips: { id: string; startTime: number; endTime: number }[]) => {
       setMediaItems((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? { ...item, startTime, endTime, duration: endTime - startTime }
-            : item
-        )
+        prev.map((item) => {
+          if (item.id !== id) return item;
+          const totalDuration = clips.reduce(
+            (acc, clip) => acc + (clip.endTime - clip.startTime),
+            0
+          );
+          return { ...item, clips, duration: totalDuration };
+        })
       );
     },
     []
@@ -218,7 +222,7 @@ const Index = () => {
                   <VideoEditor
                     videos={mediaItems.filter((item) => item.type === "video")}
                     onRemove={handleRemove}
-                    onClipChange={handleClipChange}
+                    onClipsChange={handleClipsChange}
                   />
                 </div>
               )}

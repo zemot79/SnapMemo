@@ -11,9 +11,11 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const imageAnimationRef = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [currentClipIndex, setCurrentClipIndex] = useState(0);
 
   // Render current item on canvas
   useEffect(() => {
@@ -38,19 +40,63 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
+    if (imageAnimationRef.current) {
+      cancelAnimationFrame(imageAnimationRef.current);
+      imageAnimationRef.current = null;
+    }
 
     if (item.type === "image") {
       const img = new Image();
       img.src = URL.createObjectURL(item.file);
       img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const scale = Math.min(
-          canvas.width / img.width,
-          canvas.height / img.height
-        );
-        const x = (canvas.width - img.width * scale) / 2;
-        const y = (canvas.height - img.height * scale) / 2;
-        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+        const focalPoint = item.focalPoint;
+        
+        if (focalPoint && isPlaying) {
+          // Animate zoom to focal point
+          const startTime = Date.now();
+          const animationDuration = item.duration * 1000; // Convert to ms
+          const startScale = 1;
+          const endScale = 1.5;
+          
+          const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / animationDuration, 1);
+            const easeProgress = 1 - Math.pow(1 - progress, 3); // Ease out cubic
+            
+            const currentScale = startScale + (endScale - startScale) * easeProgress;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Calculate base position
+            const baseScale = Math.min(canvas.width / img.width, canvas.height / img.height);
+            const scaledWidth = img.width * baseScale * currentScale;
+            const scaledHeight = img.height * baseScale * currentScale;
+            
+            // Interpolate position towards focal point
+            const targetX = canvas.width / 2 - (focalPoint.x * img.width * baseScale * currentScale);
+            const targetY = canvas.height / 2 - (focalPoint.y * img.height * baseScale * currentScale);
+            const startX = (canvas.width - img.width * baseScale) / 2;
+            const startY = (canvas.height - img.height * baseScale) / 2;
+            
+            const x = startX + (targetX - startX) * easeProgress;
+            const y = startY + (targetY - startY) * easeProgress;
+            
+            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+            
+            if (progress < 1 && isPlaying) {
+              imageAnimationRef.current = requestAnimationFrame(animate);
+            }
+          };
+          
+          animate();
+        } else {
+          // Static image display
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+          const x = (canvas.width - img.width * scale) / 2;
+          const y = (canvas.height - img.height * scale) / 2;
+          ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+        }
         URL.revokeObjectURL(img.src);
       };
     } else if (item.type === "video") {
@@ -81,26 +127,55 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
       };
 
       video.onloadeddata = () => {
-        if (isPlaying) {
-          video.play().then(() => {
-            drawVideoFrame();
-          });
+        const clips = item.clips || [];
+        
+        if (clips.length > 0 && currentClipIndex < clips.length) {
+          const clip = clips[currentClipIndex];
+          video.currentTime = clip.startTime;
+          
+          if (isPlaying) {
+            video.play().then(() => {
+              drawVideoFrame();
+            });
+          } else {
+            // Draw first frame
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const scale = Math.min(
+              canvas.width / video.videoWidth,
+              canvas.height / video.videoHeight
+            );
+            const x = (canvas.width - video.videoWidth * scale) / 2;
+            const y = (canvas.height - video.videoHeight * scale) / 2;
+            ctx.drawImage(
+              video,
+              x,
+              y,
+              video.videoWidth * scale,
+              video.videoHeight * scale
+            );
+          }
         } else {
-          // Draw first frame
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          const scale = Math.min(
-            canvas.width / video.videoWidth,
-            canvas.height / video.videoHeight
-          );
-          const x = (canvas.width - video.videoWidth * scale) / 2;
-          const y = (canvas.height - video.videoHeight * scale) / 2;
-          ctx.drawImage(
-            video,
-            x,
-            y,
-            video.videoWidth * scale,
-            video.videoHeight * scale
-          );
+          // No clips defined, play entire video
+          if (isPlaying) {
+            video.play().then(() => {
+              drawVideoFrame();
+            });
+          } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const scale = Math.min(
+              canvas.width / video.videoWidth,
+              canvas.height / video.videoHeight
+            );
+            const x = (canvas.width - video.videoWidth * scale) / 2;
+            const y = (canvas.height - video.videoHeight * scale) / 2;
+            ctx.drawImage(
+              video,
+              x,
+              y,
+              video.videoWidth * scale,
+              video.videoHeight * scale
+            );
+          }
         }
       };
     }
@@ -109,8 +184,11 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
+      if (imageAnimationRef.current) {
+        cancelAnimationFrame(imageAnimationRef.current);
+      }
     };
-  }, [items, currentIndex, isPlaying]);
+  }, [items, currentIndex, isPlaying, currentClipIndex]);
 
   useEffect(() => {
     if (!isPlaying || items.length === 0) return;
@@ -118,21 +196,75 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
     const interval = setInterval(() => {
       setProgress((prev) => {
         const currentItem = items[currentIndex];
-        if (prev >= currentItem.duration) {
-          if (currentIndex < items.length - 1) {
-            setCurrentIndex(currentIndex + 1);
-            return 0;
-          } else {
-            setIsPlaying(false);
-            return currentItem.duration;
+        
+        // Handle video clips
+        if (currentItem.type === "video" && currentItem.clips && currentItem.clips.length > 0) {
+          const clips = currentItem.clips;
+          const currentClip = clips[currentClipIndex];
+          
+          if (!currentClip) {
+            // Move to next item
+            if (currentIndex < items.length - 1) {
+              setCurrentIndex(currentIndex + 1);
+              setCurrentClipIndex(0);
+              return 0;
+            } else {
+              setIsPlaying(false);
+              return 0;
+            }
+          }
+          
+          const clipDuration = currentClip.endTime - currentClip.startTime;
+          
+          if (prev >= clipDuration) {
+            // Move to next clip or next item
+            if (currentClipIndex < clips.length - 1) {
+              setCurrentClipIndex(currentClipIndex + 1);
+              return 0;
+            } else if (currentIndex < items.length - 1) {
+              setCurrentIndex(currentIndex + 1);
+              setCurrentClipIndex(0);
+              return 0;
+            } else {
+              setIsPlaying(false);
+              return clipDuration;
+            }
+          }
+          
+          // Check if video needs to skip to next clip
+          if (videoRef.current && videoRef.current.currentTime >= currentClip.endTime) {
+            if (currentClipIndex < clips.length - 1) {
+              setCurrentClipIndex(currentClipIndex + 1);
+              return 0;
+            } else if (currentIndex < items.length - 1) {
+              setCurrentIndex(currentIndex + 1);
+              setCurrentClipIndex(0);
+              return 0;
+            } else {
+              setIsPlaying(false);
+              return clipDuration;
+            }
+          }
+        } else {
+          // Handle normal duration
+          if (prev >= currentItem.duration) {
+            if (currentIndex < items.length - 1) {
+              setCurrentIndex(currentIndex + 1);
+              setCurrentClipIndex(0);
+              return 0;
+            } else {
+              setIsPlaying(false);
+              return currentItem.duration;
+            }
           }
         }
+        
         return prev + 0.1;
       });
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isPlaying, currentIndex, items]);
+  }, [isPlaying, currentIndex, currentClipIndex, items]);
 
   const handlePlayPause = () => {
     const newPlayingState = !isPlaying;
@@ -150,6 +282,7 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
   const handleReset = () => {
     setIsPlaying(false);
     setCurrentIndex(0);
+    setCurrentClipIndex(0);
     setProgress(0);
     
     if (videoRef.current) {
