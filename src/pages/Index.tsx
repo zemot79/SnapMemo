@@ -3,6 +3,7 @@ import { ImageUploader } from "@/components/ImageUploader";
 import { VideoUploader } from "@/components/VideoUploader";
 import { Timeline, MediaItem } from "@/components/Timeline";
 import { ImageEditor } from "@/components/ImageEditor";
+import { VideoEditor } from "@/components/VideoEditor";
 import { PreviewPanel } from "@/components/PreviewPanel";
 import { ExportPanel, ExportSettings } from "@/components/ExportPanel";
 import { VideoTitleStep } from "@/components/VideoTitleStep";
@@ -84,6 +85,19 @@ const Index = () => {
         prev.map((item) => (item.id === id ? { ...item, focalPoint } : item))
       );
       toast.success("Fókuszpont beállítva");
+    },
+    []
+  );
+
+  const handleClipChange = useCallback(
+    (id: string, startTime: number, endTime: number) => {
+      setMediaItems((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, startTime, endTime, duration: endTime - startTime }
+            : item
+        )
+      );
     },
     []
   );
@@ -183,11 +197,11 @@ const Index = () => {
 
           {/* Step 3: Video Upload */}
           {currentStep === 3 && (
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-6xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
                 <h2 className="text-2xl font-bold">Videók feltöltése</h2>
                 <p className="text-muted-foreground">
-                  Adj hozzá videókat a projektedhez
+                  Adj hozzá videókat és válaszd ki a lényeges részeket
                 </p>
                 {getVideoCount() > 0 && (
                   <p className="text-sm text-accent font-medium">
@@ -198,11 +212,13 @@ const Index = () => {
               <VideoUploader onFilesAdded={handleVideosAdded} />
               {getVideoCount() > 0 && (
                 <div className="bg-card rounded-lg border border-border p-6">
-                  <Timeline
-                    items={mediaItems.filter((item) => item.type === "video")}
+                  <h3 className="text-lg font-semibold mb-4">
+                    Add meg a lényeges részek időszakait
+                  </h3>
+                  <VideoEditor
+                    videos={mediaItems.filter((item) => item.type === "video")}
                     onRemove={handleRemove}
-                    onReorder={handleReorder}
-                    onDurationChange={handleDurationChange}
+                    onClipChange={handleClipChange}
                   />
                 </div>
               )}
