@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { ImageUploader } from "@/components/ImageUploader";
 import { VideoUploader } from "@/components/VideoUploader";
 import { Timeline, MediaItem } from "@/components/Timeline";
+import { ImageEditor } from "@/components/ImageEditor";
 import { PreviewPanel } from "@/components/PreviewPanel";
 import { ExportPanel, ExportSettings } from "@/components/ExportPanel";
 import { VideoTitleStep } from "@/components/VideoTitleStep";
@@ -77,6 +78,16 @@ const Index = () => {
     );
   }, []);
 
+  const handleFocalPointChange = useCallback(
+    (id: string, focalPoint: { x: number; y: number }) => {
+      setMediaItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, focalPoint } : item))
+      );
+      toast.success("Fókuszpont beállítva");
+    },
+    []
+  );
+
   const handleExport = useCallback((settings: ExportSettings) => {
     console.log("Exportálás beállításokkal:", settings);
     toast.info("Az exportálás funkció fejlesztés alatt áll");
@@ -142,11 +153,11 @@ const Index = () => {
 
           {/* Step 2: Image Upload */}
           {currentStep === 2 && (
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-6xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
                 <h2 className="text-2xl font-bold">Képek feltöltése</h2>
                 <p className="text-muted-foreground">
-                  Adj hozzá képeket a videó projektedhez
+                  Adj hozzá képeket és jelöld ki a főbb téma helyét
                 </p>
                 {getImageCount() > 0 && (
                   <p className="text-sm text-primary font-medium">
@@ -157,11 +168,13 @@ const Index = () => {
               <ImageUploader onFilesAdded={handleImagesAdded} />
               {getImageCount() > 0 && (
                 <div className="bg-card rounded-lg border border-border p-6">
-                  <Timeline
-                    items={mediaItems.filter((item) => item.type === "image")}
+                  <h3 className="text-lg font-semibold mb-4">
+                    Kattints a képekre a fókuszpont megadásához
+                  </h3>
+                  <ImageEditor
+                    images={mediaItems.filter((item) => item.type === "image")}
                     onRemove={handleRemove}
-                    onReorder={handleReorder}
-                    onDurationChange={handleDurationChange}
+                    onFocalPointChange={handleFocalPointChange}
                   />
                 </div>
               )}

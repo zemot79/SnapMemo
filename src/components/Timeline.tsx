@@ -8,6 +8,7 @@ export interface MediaItem {
   type: "image" | "video";
   duration: number;
   thumbnail?: string;
+  focalPoint?: { x: number; y: number };
 }
 
 interface TimelineProps {
