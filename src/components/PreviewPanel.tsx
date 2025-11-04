@@ -9,10 +9,13 @@ interface PreviewPanelProps {
 
 export const PreviewPanel = ({ items }: PreviewPanelProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0);
 
+  // Render current item on canvas
   useEffect(() => {
     if (!canvasRef.current || items.length === 0) return;
 
@@ -20,28 +23,70 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const renderCurrentItem = async () => {
-      const item = items[currentIndex];
-      if (!item) return;
+    const item = items[currentIndex];
+    if (!item) return;
 
-      if (item.type === "image") {
-        const img = new Image();
-        img.src = URL.createObjectURL(item.file);
-        img.onload = () => {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          const scale = Math.min(
-            canvas.width / img.width,
-            canvas.height / img.height
-          );
-          const x = (canvas.width - img.width * scale) / 2;
-          const y = (canvas.height - img.height * scale) / 2;
-          ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-          URL.revokeObjectURL(img.src);
-        };
-      } else if (item.type === "video") {
-        const video = document.createElement("video");
-        video.src = URL.createObjectURL(item.file);
-        video.onloadeddata = () => {
+    // Clean up previous video
+    if (videoRef.current) {
+      videoRef.current.pause();
+      URL.revokeObjectURL(videoRef.current.src);
+      videoRef.current = null;
+    }
+
+    // Cancel any ongoing animation
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
+    if (item.type === "image") {
+      const img = new Image();
+      img.src = URL.createObjectURL(item.file);
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const scale = Math.min(
+          canvas.width / img.width,
+          canvas.height / img.height
+        );
+        const x = (canvas.width - img.width * scale) / 2;
+        const y = (canvas.height - img.height * scale) / 2;
+        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+        URL.revokeObjectURL(img.src);
+      };
+    } else if (item.type === "video") {
+      const video = document.createElement("video");
+      video.src = URL.createObjectURL(item.file);
+      video.muted = true;
+      videoRef.current = video;
+
+      const drawVideoFrame = () => {
+        if (!video || !ctx || video.paused || video.ended) return;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const scale = Math.min(
+          canvas.width / video.videoWidth,
+          canvas.height / video.videoHeight
+        );
+        const x = (canvas.width - video.videoWidth * scale) / 2;
+        const y = (canvas.height - video.videoHeight * scale) / 2;
+        ctx.drawImage(
+          video,
+          x,
+          y,
+          video.videoWidth * scale,
+          video.videoHeight * scale
+        );
+        
+        animationFrameRef.current = requestAnimationFrame(drawVideoFrame);
+      };
+
+      video.onloadeddata = () => {
+        if (isPlaying) {
+          video.play().then(() => {
+            drawVideoFrame();
+          });
+        } else {
+          // Draw first frame
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           const scale = Math.min(
             canvas.width / video.videoWidth,
@@ -56,13 +101,16 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
             video.videoWidth * scale,
             video.videoHeight * scale
           );
-          URL.revokeObjectURL(video.src);
-        };
+        }
+      };
+    }
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
     };
-
-    renderCurrentItem();
-  }, [items, currentIndex]);
+  }, [items, currentIndex, isPlaying]);
 
   useEffect(() => {
     if (!isPlaying || items.length === 0) return;
@@ -87,13 +135,27 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
   }, [isPlaying, currentIndex, items]);
 
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    const newPlayingState = !isPlaying;
+    setIsPlaying(newPlayingState);
+    
+    if (videoRef.current) {
+      if (newPlayingState) {
+        videoRef.current.play();
+      } else {
+        videoRef.current.pause();
+      }
+    }
   };
 
   const handleReset = () => {
     setIsPlaying(false);
     setCurrentIndex(0);
     setProgress(0);
+    
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
   };
 
   if (items.length === 0) {
