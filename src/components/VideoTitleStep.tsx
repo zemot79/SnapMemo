@@ -10,7 +10,7 @@ interface VideoTitleStepProps {
   initialDescription?: string;
   initialLocation?: string;
   initialDate?: string;
-  onNext: (title: string, description: string, location: string, date: string) => void;
+  onNext: (title: string, description: string, location: string, dateFrom: string, dateTo: string) => void;
 }
 
 export const VideoTitleStep = ({
@@ -23,11 +23,13 @@ export const VideoTitleStep = ({
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [location, setLocation] = useState(initialLocation);
-  const [date, setDate] = useState(initialDate);
+  // Parse initial date if it contains " - "
+  const [dateFrom, setDateFrom] = useState(initialDate.includes(" - ") ? initialDate.split(" - ")[0] : initialDate);
+  const [dateTo, setDateTo] = useState(initialDate.includes(" - ") ? initialDate.split(" - ")[1] : "");
 
   const handleNext = () => {
     if (title.trim()) {
-      onNext(title, description, location, date);
+      onNext(title, description, location, dateFrom, dateTo);
     }
   };
 
@@ -79,13 +81,23 @@ export const VideoTitleStep = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="date">Időpont (opcionális)</Label>
-            <Input
-              id="date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
+            <Label htmlFor="dateFrom">Időpont (opcionális)</Label>
+            <div className="space-y-2">
+              <Input
+                id="dateFrom"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                placeholder="Kezdő dátum"
+              />
+              <Input
+                id="dateTo"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                placeholder="Befejező dátum (opcionális)"
+              />
+            </div>
           </div>
         </div>
 

@@ -1,15 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Play, Pause, RotateCcw } from "lucide-react";
 import { Button } from "./ui/button";
 import { MediaItem } from "./Timeline";
 
 interface PreviewPanelProps {
   items: MediaItem[];
+  audioFile?: File | null;
 }
 
-export const PreviewPanel = ({ items }: PreviewPanelProps) => {
+export const PreviewPanel = ({ items, audioFile }: PreviewPanelProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const imageAnimationRef = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -51,9 +53,11 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
       img.onload = () => {
         const focalPoint = item.focalPoint;
         
-        // Always draw the image first (static)
+        // Draw static image function
         const drawStatic = () => {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
           const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
           const x = (canvas.width - img.width * scale) / 2;
           const y = (canvas.height - img.height * scale) / 2;
@@ -282,6 +286,14 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
         videoRef.current.pause();
       }
     }
+    
+    if (audioRef.current) {
+      if (newPlayingState) {
+        audioRef.current.play();
+      } else {
+        audioRef.current.pause();
+      }
+    }
   };
 
   const handleReset = () => {
@@ -293,6 +305,11 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
+    }
+    
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
   };
 
@@ -308,6 +325,23 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
   const progressPercentage = currentItem
     ? (progress / currentItem.duration) * 100
     : 0;
+
+  // Setup audio
+  React.useEffect(() => {
+    if (!audioFile) return;
+    
+    const audio = new Audio(URL.createObjectURL(audioFile));
+    audio.loop = true;
+    audioRef.current = audio;
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        URL.revokeObjectURL(audioRef.current.src);
+        audioRef.current = null;
+      }
+    };
+  }, [audioFile]);
 
   return (
     <div className="flex flex-col gap-4">

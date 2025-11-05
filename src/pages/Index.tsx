@@ -32,11 +32,12 @@ const Index = () => {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [audioFile, setAudioFile] = useState<File | null>(null);
 
-  const handleTitleNext = useCallback((title: string, description: string, location: string, date: string) => {
+  const handleTitleNext = useCallback((title: string, description: string, location: string, dateFrom: string, dateTo: string) => {
     setVideoTitle(title);
     setVideoDescription(description);
     setVideoLocation(location);
-    setVideoDate(date);
+    const fullDate = dateTo ? `${dateFrom} - ${dateTo}` : dateFrom;
+    setVideoDate(fullDate);
     setCurrentStep(2);
     toast.success("Cím mentve!");
   }, []);
@@ -286,7 +287,7 @@ const Index = () => {
                   Nézd meg, hogyan fog kinézni a videód
                 </p>
               </div>
-              <PreviewPanel items={mediaItems} />
+              <PreviewPanel items={mediaItems} audioFile={audioFile} />
             </div>
           )}
 
