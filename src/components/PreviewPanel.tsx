@@ -51,6 +51,15 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
       img.onload = () => {
         const focalPoint = item.focalPoint;
         
+        // Always draw the image first (static)
+        const drawStatic = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+          const x = (canvas.width - img.width * scale) / 2;
+          const y = (canvas.height - img.height * scale) / 2;
+          ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+        };
+        
         if (focalPoint && isPlaying) {
           // Animate zoom to focal point
           const startTime = Date.now();
@@ -91,11 +100,7 @@ export const PreviewPanel = ({ items }: PreviewPanelProps) => {
           animate();
         } else {
           // Static image display
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
-          const x = (canvas.width - img.width * scale) / 2;
-          const y = (canvas.height - img.height * scale) / 2;
-          ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+          drawStatic();
         }
         URL.revokeObjectURL(img.src);
       };

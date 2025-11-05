@@ -8,20 +8,26 @@ import { ArrowRight, Film } from "lucide-react";
 interface VideoTitleStepProps {
   initialTitle?: string;
   initialDescription?: string;
-  onNext: (title: string, description: string) => void;
+  initialLocation?: string;
+  initialDate?: string;
+  onNext: (title: string, description: string, location: string, date: string) => void;
 }
 
 export const VideoTitleStep = ({
   initialTitle = "",
   initialDescription = "",
+  initialLocation = "",
+  initialDate = "",
   onNext,
 }: VideoTitleStepProps) => {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
+  const [location, setLocation] = useState(initialLocation);
+  const [date, setDate] = useState(initialDate);
 
   const handleNext = () => {
     if (title.trim()) {
-      onNext(title, description);
+      onNext(title, description, location, date);
     }
   };
 
@@ -59,6 +65,26 @@ export const VideoTitleStep = ({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Írj egy rövid leírást a videóról..."
               rows={4}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="location">Helyszín (opcionális)</Label>
+            <Input
+              id="location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="pl. Budapest, Magyarország"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="date">Időpont (opcionális)</Label>
+            <Input
+              id="date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
             />
           </div>
         </div>

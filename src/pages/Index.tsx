@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { ImageUploader } from "@/components/ImageUploader";
 import { VideoUploader } from "@/components/VideoUploader";
+import { AudioUploader } from "@/components/AudioUploader";
 import { Timeline, MediaItem } from "@/components/Timeline";
 import { ImageEditor } from "@/components/ImageEditor";
 import { VideoEditor } from "@/components/VideoEditor";
@@ -17,19 +18,25 @@ const steps: Step[] = [
   { id: 2, title: "Képek", description: "Képek feltöltése" },
   { id: 3, title: "Videók", description: "Videók feltöltése" },
   { id: 4, title: "Szerkesztés", description: "Timeline" },
-  { id: 5, title: "Előnézet", description: "Megtekintés" },
-  { id: 6, title: "Export", description: "Videó mentése" },
+  { id: 5, title: "Zene", description: "Háttérzene" },
+  { id: 6, title: "Előnézet", description: "Megtekintés" },
+  { id: 7, title: "Export", description: "Videó mentése" },
 ];
 
 const Index = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [videoTitle, setVideoTitle] = useState("");
   const [videoDescription, setVideoDescription] = useState("");
+  const [videoLocation, setVideoLocation] = useState("");
+  const [videoDate, setVideoDate] = useState("");
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
 
-  const handleTitleNext = useCallback((title: string, description: string) => {
+  const handleTitleNext = useCallback((title: string, description: string, location: string, date: string) => {
     setVideoTitle(title);
     setVideoDescription(description);
+    setVideoLocation(location);
+    setVideoDate(date);
     setCurrentStep(2);
     toast.success("Cím mentve!");
   }, []);
@@ -117,7 +124,7 @@ const Index = () => {
   const canGoNext = () => {
     if (currentStep === 2 && getImageCount() === 0) return false;
     if (currentStep === 3 && getVideoCount() === 0) return false;
-    return currentStep < 6;
+    return currentStep < 7;
   };
 
   const canGoPrev = () => currentStep > 1;
@@ -165,6 +172,8 @@ const Index = () => {
             <VideoTitleStep
               initialTitle={videoTitle}
               initialDescription={videoDescription}
+              initialLocation={videoLocation}
+              initialDate={videoDate}
               onNext={handleTitleNext}
             />
           )}
@@ -257,8 +266,19 @@ const Index = () => {
             </div>
           )}
 
-          {/* Step 5: Preview */}
+          {/* Step 5: Audio Upload */}
           {currentStep === 5 && (
+            <div className="max-w-2xl mx-auto space-y-6">
+              <AudioUploader
+                audio={audioFile}
+                onAudioAdded={setAudioFile}
+                onAudioRemoved={() => setAudioFile(null)}
+              />
+            </div>
+          )}
+
+          {/* Step 6: Preview */}
+          {currentStep === 6 && (
             <div className="max-w-4xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
                 <h2 className="text-2xl font-bold">Előnézet</h2>
@@ -270,8 +290,8 @@ const Index = () => {
             </div>
           )}
 
-          {/* Step 6: Export */}
-          {currentStep === 6 && (
+          {/* Step 7: Export */}
+          {currentStep === 7 && (
             <div className="max-w-2xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
                 <h2 className="text-2xl font-bold">Export beállítások</h2>
@@ -299,7 +319,7 @@ const Index = () => {
                 <ArrowLeft className="w-4 h-4" />
                 Vissza
               </Button>
-              {currentStep < 6 && (
+              {currentStep < 7 && (
                 <Button
                   onClick={handleNext}
                   size="lg"
