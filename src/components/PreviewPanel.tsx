@@ -17,6 +17,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
   const imageAnimationRef = useRef<number | null>(null);
   const transitionFrameRef = useRef<number | null>(null);
   const blobUrlsRef = useRef<string[]>([]);
+  const loadedImagesRef = useRef<Map<number, HTMLImageElement>>(new Map());
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -147,13 +148,28 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
     }
 
     if (item.type === "image") {
-      const img = new Image();
-      const blobUrl = URL.createObjectURL(item.file);
-      blobUrlsRef.current.push(blobUrl);
-      img.src = blobUrl;
+      // Check if image is already loaded
+      let img = loadedImagesRef.current.get(currentIndex);
       
-      img.onload = () => {
-        console.log('Image loaded:', currentIndex);
+      if (!img) {
+        // Load new image
+        img = new Image();
+        const blobUrl = URL.createObjectURL(item.file);
+        blobUrlsRef.current.push(blobUrl);
+        img.src = blobUrl;
+        
+        img.onload = () => {
+          console.log('Image loaded:', currentIndex);
+          loadedImagesRef.current.set(currentIndex, img!);
+          renderImage(img!);
+        };
+      } else {
+        // Image already loaded, render immediately
+        console.log('Using cached image:', currentIndex);
+        renderImage(img);
+      }
+      
+      function renderImage(img: HTMLImageElement) {
         const focalPoint = item.focalPoint;
         
         // Save current canvas state for transition
@@ -221,7 +237,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
           
           animate();
         }
-      };
+      }
     } else if (item.type === "video") {
       const video = document.createElement("video");
       const blobUrl = URL.createObjectURL(item.file);
