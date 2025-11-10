@@ -23,7 +23,7 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
   const [quality, setQuality] = useState("high");
   const [fps, setFps] = useState(30);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (disabled) {
       toast.error("Adj hozzá legalább egy médiát az exportáláshoz");
       return;
@@ -34,26 +34,81 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
       return;
     }
     
-    const canvas = canvasRef.current;
-    
-    // Simple solution: export current frame as image
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        toast.error("Nem sikerült létrehozni a képet");
+    try {
+      const canvas = canvasRef.current;
+      
+      // Check if MediaRecorder is supported
+      if (!window.MediaRecorder) {
+        toast.error("A böngésző nem támogatja a videó rögzítést");
         return;
       }
       
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `video_frame_${Date.now()}.png`;
-      link.click();
+      // Start recording
+      const stream = canvas.captureStream(fps);
       
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success("Kép letöltve! (Teljes videó export fejlesztés alatt)");
-    }, 'image/png');
-    
-    onExport({ format, quality, fps });
+      let mimeType = 'video/webm';
+      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+        mimeType = 'video/webm;codecs=vp9';
+      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+        mimeType = 'video/webm;codecs=vp8';
+      }
+      
+      const recorder = new MediaRecorder(stream, {
+        mimeType,
+        videoBitsPerSecond: getBitrate(quality),
+      });
+      
+      const chunks: Blob[] = [];
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+      
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `video_${Date.now()}.webm`;
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 100);
+        
+        stream.getTracks().forEach(track => track.stop());
+        toast.success("Videó letöltve!");
+      };
+      
+      recorder.onerror = (e) => {
+        console.error('Recorder error:', e);
+        toast.error("Hiba a rögzítés során");
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      // Start recording
+      recorder.start(100);
+      toast.info("Rögzítés folyamatban... 10 másodperc");
+      
+      // Stop after 10 seconds
+      setTimeout(() => {
+        if (recorder.state === 'recording') {
+          recorder.stop();
+        }
+      }, 10000);
+      
+      onExport({ format, quality, fps });
+      
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Hiba az exportálás során");
+    }
   };
   
   const getBitrate = (quality: string): number => {
