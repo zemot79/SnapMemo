@@ -16,6 +16,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
   const animationFrameRef = useRef<number | null>(null);
   const imageAnimationRef = useRef<number | null>(null);
   const transitionFrameRef = useRef<number | null>(null);
+  const blobUrlsRef = useRef<string[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -123,10 +124,11 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
     const item = items[currentIndex];
     if (!item) return;
 
+    console.log('Rendering item:', currentIndex, item.type);
+
     // Clean up previous video
     if (videoRef.current) {
       videoRef.current.pause();
-      URL.revokeObjectURL(videoRef.current.src);
       videoRef.current = null;
     }
 
@@ -146,8 +148,12 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
 
     if (item.type === "image") {
       const img = new Image();
-      img.src = URL.createObjectURL(item.file);
+      const blobUrl = URL.createObjectURL(item.file);
+      blobUrlsRef.current.push(blobUrl);
+      img.src = blobUrl;
+      
       img.onload = () => {
+        console.log('Image loaded:', currentIndex);
         const focalPoint = item.focalPoint;
         
         // Save current canvas state for transition
@@ -175,7 +181,8 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
         // Always draw the image first
         drawStatic();
         
-        if (focalPoint && isPlaying) {
+        if (focalPoint) {
+          console.log('Starting focal point animation:', focalPoint);
           // Animate zoom to focal point
           const startTime = Date.now();
           const animationDuration = item.duration * 1000; // Convert to ms
@@ -207,21 +214,19 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
             
             ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
             
-            if (progress < 1 && isPlaying) {
+            if (progress < 1) {
               imageAnimationRef.current = requestAnimationFrame(animate);
             }
           };
           
           animate();
-        } else {
-          // Static image display
-          drawStatic();
         }
-        URL.revokeObjectURL(img.src);
       };
     } else if (item.type === "video") {
       const video = document.createElement("video");
-      video.src = URL.createObjectURL(item.file);
+      const blobUrl = URL.createObjectURL(item.file);
+      blobUrlsRef.current.push(blobUrl);
+      video.src = blobUrl;
       video.muted = true;
       videoRef.current = video;
 
@@ -247,6 +252,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
       };
 
       video.onloadeddata = () => {
+        console.log('Video loaded:', currentIndex);
         const clips = item.clips || [];
         
         if (clips.length > 0 && currentClipIndex < clips.length) {
@@ -313,6 +319,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
     };
   }, [items, currentIndex, isPlaying, currentClipIndex]);
 
+  // Progress and item switching
   useEffect(() => {
     if (!isPlaying || items.length === 0) return;
 
@@ -373,6 +380,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
           const transitionDuration = 0.5; // 0.5 seconds for transition
           
           if (prev >= currentItem.duration - transitionDuration && !isTransitioning && currentIndex < items.length - 1) {
+            console.log('Starting transition');
             // Start transition
             setIsTransitioning(true);
             setTransitionProgress(0);
@@ -409,15 +417,127 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isPlaying, currentIndex, currentClipIndex, items]);
+  }, [isPlaying, currentIndex, currentClipIndex, items, isTransitioning]);
+
+  // Transition animation effect
+  useEffect(() => {
+    if (!isTransitioning || !canvasRef.current || !previousImageRef.current) return;
+    
+    console.log('Animating transition');
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    
+    const transitionType = getRandomTransition();
+    const transitionDuration = 500; // 0.5 seconds
+    const startTime = Date.now();
+    
+    const animateTransition = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / transitionDuration, 1);
+      
+      // Get current item image/video
+      const nextIndex = Math.min(currentIndex + 1, items.length - 1);
+      const nextItem = items[nextIndex];
+      
+      if (nextItem && nextItem.type === "image") {
+        const img = new Image();
+        const blobUrl = URL.createObjectURL(nextItem.file);
+        img.src = blobUrl;
+        
+        img.onload = () => {
+          applyTransition(ctx, previousImageRef.current!, img, progress, transitionType);
+          
+          if (progress < 1) {
+            transitionFrameRef.current = requestAnimationFrame(animateTransition);
+          } else {
+            setIsTransitioning(false);
+            previousImageRef.current = null;
+          }
+          URL.revokeObjectURL(blobUrl);
+        };
+      } else {
+        // For videos or if no next item, just finish transition
+        if (progress < 1) {
+          transitionFrameRef.current = requestAnimationFrame(animateTransition);
+        } else {
+          setIsTransitioning(false);
+          previousImageRef.current = null;
+        }
+      }
+    };
+    
+    animateTransition();
+    
+    return () => {
+      if (transitionFrameRef.current) {
+        cancelAnimationFrame(transitionFrameRef.current);
+      }
+    };
+  }, [isTransitioning, currentIndex, items, transitions]);
+
+  // Initial canvas setup - render first item immediately
+  useEffect(() => {
+    if (!canvasRef.current || items.length === 0 || currentIndex !== 0) return;
+    
+    console.log('Initial canvas setup');
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    
+    const firstItem = items[0];
+    if (firstItem.type === "image") {
+      const img = new Image();
+      const blobUrl = URL.createObjectURL(firstItem.file);
+      blobUrlsRef.current.push(blobUrl);
+      img.src = blobUrl;
+      
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+        const x = (canvas.width - img.width * scale) / 2;
+        const y = (canvas.height - img.height * scale) / 2;
+        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+      };
+    } else if (firstItem.type === "video") {
+      const video = document.createElement("video");
+      const blobUrl = URL.createObjectURL(firstItem.file);
+      blobUrlsRef.current.push(blobUrl);
+      video.src = blobUrl;
+      video.muted = true;
+      
+      video.onloadeddata = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const scale = Math.min(
+          canvas.width / video.videoWidth,
+          canvas.height / video.videoHeight
+        );
+        const x = (canvas.width - video.videoWidth * scale) / 2;
+        const y = (canvas.height - video.videoHeight * scale) / 2;
+        ctx.drawImage(
+          video,
+          x,
+          y,
+          video.videoWidth * scale,
+          video.videoHeight * scale
+        );
+      };
+    }
+  }, [items]);
 
   const handlePlayPause = () => {
     const newPlayingState = !isPlaying;
     setIsPlaying(newPlayingState);
     
+    console.log('Play/Pause:', newPlayingState);
+    
     if (videoRef.current) {
       if (newPlayingState) {
-        videoRef.current.play();
+        videoRef.current.play().catch(err => {
+          console.error('Video play error:', err);
+        });
       } else {
         videoRef.current.pause();
       }
@@ -425,7 +545,9 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
     
     if (audioRef.current) {
       if (newPlayingState) {
-        audioRef.current.play();
+        audioRef.current.play().catch(err => {
+          console.error('Audio play error:', err);
+        });
       } else {
         audioRef.current.pause();
       }
@@ -433,6 +555,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
   };
 
   const handleReset = () => {
+    console.log('Reset');
     setIsPlaying(false);
     setCurrentIndex(0);
     setCurrentClipIndex(0);
@@ -469,63 +592,110 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
   React.useEffect(() => {
     if (!audioFile) return;
     
-    const audio = new Audio(URL.createObjectURL(audioFile));
+    console.log('Setting up audio');
+    const blobUrl = URL.createObjectURL(audioFile);
+    blobUrlsRef.current.push(blobUrl);
+    const audio = new Audio(blobUrl);
     audio.loop = true;
     audioRef.current = audio;
     
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
-        URL.revokeObjectURL(audioRef.current.src);
         audioRef.current = null;
       }
     };
   }, [audioFile]);
 
+  // Cleanup all blob URLs on unmount
+  React.useEffect(() => {
+    return () => {
+      console.log('Cleaning up blob URLs:', blobUrlsRef.current.length);
+      blobUrlsRef.current.forEach(url => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          console.error('Error revoking blob URL:', err);
+        }
+      });
+      blobUrlsRef.current = [];
+      
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      if (imageAnimationRef.current) cancelAnimationFrame(imageAnimationRef.current);
+      if (transitionFrameRef.current) cancelAnimationFrame(transitionFrameRef.current);
+      
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current = null;
+      }
+    };
+  }, []);
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
+    <div className="bg-card rounded-lg border border-border p-6 h-full flex flex-col gap-4">
+      <div className="flex-1 flex items-center justify-center bg-black rounded-lg overflow-hidden">
         <canvas
           ref={canvasRef}
-          width={800}
-          height={450}
-          className="w-full h-auto bg-black"
+          width={1920}
+          height={1080}
+          className="max-w-full max-h-full object-contain"
         />
-        <div className="p-4 space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              {currentIndex + 1} / {items.length} - {currentItem?.file.name}
-            </span>
-            <span className="text-muted-foreground">
-              {progress.toFixed(1)}s / {currentItem?.duration}s
-            </span>
-          </div>
-          <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-100"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-          <div className="flex gap-2 justify-center">
-            <Button onClick={handlePlayPause} size="lg" className="gap-2">
-              {isPlaying ? (
-                <>
-                  <Pause className="w-4 h-4" />
-                  Szünet
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4" />
-                  Lejátszás
-                </>
-              )}
-            </Button>
-            <Button onClick={handleReset} variant="outline" size="lg" className="gap-2">
-              <RotateCcw className="w-4 h-4" />
-              Újra
-            </Button>
-          </div>
+      </div>
+      
+      <div className="space-y-4">
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            {currentIndex + 1} / {items.length}
+            {currentItem?.type === "video" && currentItem.clips && currentItem.clips.length > 0 
+              ? ` (Klip ${currentClipIndex + 1}/${currentItem.clips.length})`
+              : ""
+            }
+          </span>
+          <span>{progress.toFixed(1)}s / {currentItem?.duration.toFixed(1)}s</span>
         </div>
+        
+        <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+          <div
+            className="bg-primary h-full transition-all duration-100"
+            style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+          />
+        </div>
+        
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            onClick={handlePlayPause}
+            size="lg"
+            className="gap-2"
+          >
+            {isPlaying ? (
+              <>
+                <Pause className="h-5 w-5" />
+                Szünet
+              </>
+            ) : (
+              <>
+                <Play className="h-5 w-5" />
+                Lejátszás
+              </>
+            )}
+          </Button>
+          
+          <Button
+            onClick={handleReset}
+            size="lg"
+            variant="outline"
+            className="gap-2"
+          >
+            <RotateCcw className="h-5 w-5" />
+            Újra
+          </Button>
+        </div>
+        
+        {audioFile && (
+          <div className="text-center text-sm text-muted-foreground">
+            🎵 Háttérzene: {audioFile.name}
+          </div>
+        )}
       </div>
     </div>
   );
