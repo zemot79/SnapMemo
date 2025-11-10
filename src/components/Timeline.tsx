@@ -1,6 +1,7 @@
 import { GripVertical, X, Clock } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { useState } from "react";
 
 export interface MediaItem {
   id: string;
@@ -25,6 +26,32 @@ export const Timeline = ({
   onReorder,
   onDurationChange,
 }: TimelineProps) => {
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (e: React.DragEvent, toIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== toIndex) {
+      onReorder(draggedIndex, toIndex);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
   if (items.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -50,9 +77,20 @@ export const Timeline = ({
         {items.map((item, index) => (
           <div
             key={item.id}
-            className="flex items-center gap-3 p-3 bg-secondary rounded-lg border border-border hover:border-primary/50 transition-colors group"
+            draggable
+            onDragStart={() => handleDragStart(index)}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDrop={(e) => handleDrop(e, index)}
+            onDragEnd={handleDragEnd}
+            className={`flex items-center gap-3 p-3 bg-secondary rounded-lg border transition-all group ${
+              draggedIndex === index
+                ? "opacity-50 scale-95"
+                : dragOverIndex === index
+                ? "border-primary ring-2 ring-primary/50"
+                : "border-border hover:border-primary/50"
+            }`}
           >
-            <GripVertical className="w-5 h-5 text-muted-foreground cursor-move" />
+            <GripVertical className="w-5 h-5 text-muted-foreground cursor-grab active:cursor-grabbing" />
             <div className="w-16 h-16 bg-muted rounded overflow-hidden flex-shrink-0">
               {item.thumbnail && (
                 <img

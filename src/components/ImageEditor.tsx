@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { MediaItem } from "./Timeline";
-import { X, Target } from "lucide-react";
+import { X, Target, GripVertical } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 
@@ -8,14 +8,18 @@ interface ImageEditorProps {
   images: MediaItem[];
   onRemove: (id: string) => void;
   onFocalPointChange: (id: string, focalPoint: { x: number; y: number }) => void;
+  onReorder?: (fromIndex: number, toIndex: number) => void;
 }
 
 export const ImageEditor = ({
   images,
   onRemove,
   onFocalPointChange,
+  onReorder,
 }: ImageEditorProps) => {
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const handleImageClick = (
     e: React.MouseEvent<HTMLDivElement>,
@@ -29,6 +33,31 @@ export const ImageEditor = ({
     setActiveImageId(imageId);
   };
 
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (e: React.DragEvent, toIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== toIndex && onReorder) {
+      // Calculate actual indices in the full media items array
+      const imageItems = images;
+      onReorder(draggedIndex, toIndex);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
   if (images.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -40,7 +69,28 @@ export const ImageEditor = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {images.map((image, index) => (
-        <Card key={image.id} className={`overflow-hidden group relative ${index === 0 ? 'ring-4 ring-primary' : ''}`}>
+        <Card 
+          key={image.id} 
+          draggable={!!onReorder}
+          onDragStart={() => handleDragStart(index)}
+          onDragOver={(e) => handleDragOver(e, index)}
+          onDrop={(e) => handleDrop(e, index)}
+          onDragEnd={handleDragEnd}
+          className={`overflow-hidden group relative transition-all ${
+            index === 0 ? 'ring-4 ring-primary' : ''
+          } ${
+            draggedIndex === index
+              ? "opacity-50 scale-95"
+              : dragOverIndex === index
+              ? "ring-2 ring-primary"
+              : ""
+          }`}
+        >
+          {onReorder && (
+            <div className="absolute top-2 left-2 z-10 p-1 bg-background/80 rounded cursor-grab active:cursor-grabbing">
+              <GripVertical className="w-4 h-4 text-muted-foreground" />
+            </div>
+          )}
           <div
             className="relative aspect-video bg-muted cursor-crosshair"
             onClick={(e) => handleImageClick(e, image.id)}

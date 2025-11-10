@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { MediaItem } from "./Timeline";
-import { X, Scissors, Play, Plus, Trash2 } from "lucide-react";
+import { X, Scissors, Play, Plus, Trash2, GripVertical } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
@@ -11,14 +11,41 @@ interface VideoEditorProps {
   videos: MediaItem[];
   onRemove: (id: string) => void;
   onClipsChange: (id: string, clips: { id: string; startTime: number; endTime: number }[]) => void;
+  onReorder?: (fromIndex: number, toIndex: number) => void;
 }
 
 export const VideoEditor = ({
   videos,
   onRemove,
   onClipsChange,
+  onReorder,
 }: VideoEditorProps) => {
   const [videoDurations, setVideoDurations] = useState<Record<string, number>>({});
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (e: React.DragEvent, toIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== toIndex && onReorder) {
+      onReorder(draggedIndex, toIndex);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
 
   useEffect(() => {
     videos.forEach((video) => {
@@ -96,7 +123,7 @@ export const VideoEditor = ({
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      {videos.map((video) => {
+      {videos.map((video, index) => {
         const duration = videoDurations[video.id] || 0;
         const clips = video.clips || [];
         const totalClipDuration = clips.reduce(
@@ -105,7 +132,26 @@ export const VideoEditor = ({
         );
 
         return (
-          <Card key={video.id} className="overflow-hidden group relative">
+          <Card 
+            key={video.id} 
+            draggable={!!onReorder}
+            onDragStart={() => handleDragStart(index)}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDrop={(e) => handleDrop(e, index)}
+            onDragEnd={handleDragEnd}
+            className={`overflow-hidden group relative transition-all ${
+              draggedIndex === index
+                ? "opacity-50 scale-95"
+                : dragOverIndex === index
+                ? "ring-2 ring-primary"
+                : ""
+            }`}
+          >
+            {onReorder && (
+              <div className="absolute top-2 left-2 z-10 p-1 bg-background/80 rounded cursor-grab active:cursor-grabbing">
+                <GripVertical className="w-4 h-4 text-muted-foreground" />
+              </div>
+            )}
             <div className="relative aspect-video bg-muted">
               {video.thumbnail && (
                 <video

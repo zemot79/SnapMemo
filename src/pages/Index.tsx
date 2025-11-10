@@ -91,6 +91,7 @@ const Index = () => {
         newItems.splice(toIndex, 0, removed);
         return newItems;
       });
+      toast.success("Elem átrendezve");
     },
     []
   );
@@ -220,13 +221,28 @@ const Index = () => {
               <ImageUploader onFilesAdded={handleImagesAdded} />
               {getImageCount() > 0 && (
                 <div className="bg-card rounded-lg border border-border p-6">
-                  <h3 className="text-lg font-semibold mb-4">
-                    Kattints a képekre a fókuszpont megadásához
-                  </h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">
+                      Kattints a képekre a fókuszpont megadásához
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      💡 Húzd az elemeket az átrendezéshez
+                    </p>
+                  </div>
                   <ImageEditor
                     images={mediaItems.filter((item) => item.type === "image")}
                     onRemove={handleRemove}
                     onFocalPointChange={handleFocalPointChange}
+                    onReorder={(from, to) => {
+                      const images = mediaItems.filter(item => item.type === "image");
+                      const allItems = [...mediaItems];
+                      const imageIndices = allItems.map((item, idx) => item.type === "image" ? idx : -1).filter(idx => idx >= 0);
+                      
+                      const actualFrom = imageIndices[from];
+                      const actualTo = imageIndices[to];
+                      
+                      handleReorder(actualFrom, actualTo);
+                    }}
                   />
                 </div>
               )}
@@ -250,13 +266,28 @@ const Index = () => {
               <VideoUploader onFilesAdded={handleVideosAdded} />
               {getVideoCount() > 0 && (
                 <div className="bg-card rounded-lg border border-border p-6">
-                  <h3 className="text-lg font-semibold mb-4">
-                    Add meg a lényeges részek időszakait
-                  </h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">
+                      Add meg a lényeges részek időszakait
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      💡 Húzd az elemeket az átrendezéshez
+                    </p>
+                  </div>
                   <VideoEditor
                     videos={mediaItems.filter((item) => item.type === "video")}
                     onRemove={handleRemove}
                     onClipsChange={handleClipsChange}
+                    onReorder={(from, to) => {
+                      const videos = mediaItems.filter(item => item.type === "video");
+                      const allItems = [...mediaItems];
+                      const videoIndices = allItems.map((item, idx) => item.type === "video" ? idx : -1).filter(idx => idx >= 0);
+                      
+                      const actualFrom = videoIndices[from];
+                      const actualTo = videoIndices[to];
+                      
+                      handleReorder(actualFrom, actualTo);
+                    }}
                   />
                 </div>
               )}
