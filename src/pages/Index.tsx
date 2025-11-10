@@ -19,8 +19,7 @@ const steps: Step[] = [
   { id: 3, title: "Videók", description: "Videók feltöltése" },
   { id: 4, title: "Szerkesztés", description: "Timeline" },
   { id: 5, title: "Zene", description: "Háttérzene" },
-  { id: 6, title: "Előnézet", description: "Megtekintés" },
-  { id: 7, title: "Export", description: "Videó mentése" },
+  { id: 6, title: "Előnézet & Export", description: "Megtekintés és mentés" },
 ];
 
 const Index = () => {
@@ -127,7 +126,7 @@ const Index = () => {
   const canGoNext = () => {
     if (currentStep === 2 && getImageCount() === 0) return false;
     if (currentStep === 3 && getVideoCount() === 0) return false;
-    return currentStep < 7;
+    return currentStep < 6;
   };
 
   const canGoPrev = () => currentStep > 1;
@@ -331,42 +330,38 @@ const Index = () => {
             </div>
           )}
 
-          {/* Step 6: Preview */}
+          {/* Step 6: Preview & Export */}
           {currentStep === 6 && (
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-6xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
-                <h2 className="text-2xl font-bold">Előnézet</h2>
+                <h2 className="text-2xl font-bold">Előnézet és Export</h2>
                 <p className="text-muted-foreground">
-                  Nézd meg, hogyan fog kinézni a videód
+                  Nézd meg a videót és töltsd le
                 </p>
               </div>
-              <PreviewPanel 
-                items={mediaItems} 
-                audioFile={audioFile} 
-                transitions={transitions}
-                location={videoLocation}
-                videoTitle={videoTitle}
-                videoDescription={videoDescription}
-                videoDate={videoDate}
-                canvasRef={canvasRef}
-              />
-            </div>
-          )}
-
-          {/* Step 7: Export */}
-          {currentStep === 7 && (
-            <div className="max-w-2xl mx-auto space-y-6">
-              <div className="text-center space-y-2 mb-6">
-                <h2 className="text-2xl font-bold">Export beállítások</h2>
-                <p className="text-muted-foreground">
-                  Válaszd ki a formátumot és a minőséget
-                </p>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <PreviewPanel 
+                    items={mediaItems} 
+                    audioFile={audioFile} 
+                    transitions={transitions}
+                    location={videoLocation}
+                    videoTitle={videoTitle}
+                    videoDescription={videoDescription}
+                    videoDate={videoDate}
+                    canvasRef={canvasRef}
+                  />
+                </div>
+                
+                <div className="lg:col-span-1">
+                  <ExportPanel
+                    onExport={handleExport}
+                    disabled={mediaItems.length === 0}
+                    canvasRef={canvasRef}
+                  />
+                </div>
               </div>
-              <ExportPanel
-                onExport={handleExport}
-                disabled={mediaItems.length === 0}
-                canvasRef={canvasRef}
-              />
             </div>
           )}
 
@@ -383,7 +378,7 @@ const Index = () => {
                 <ArrowLeft className="w-4 h-4" />
                 Vissza
               </Button>
-              {currentStep < 7 && (
+              {currentStep < 6 && (
                 <Button
                   onClick={handleNext}
                   size="lg"
