@@ -24,26 +24,22 @@ export const VideoTitleStep = ({
   const [description, setDescription] = useState(initialDescription);
   const [location, setLocation] = useState(initialLocation);
   
-  // Parse initial date - format is "YYYY-MM" or "YYYY-MM - YYYY-MM"
+  // Parse initial date - format is "YYYY-MM"
   const parseMonth = (dateStr: string) => {
     if (!dateStr) return { year: "", month: "" };
-    const parts = dateStr.split("-");
+    const cleanDate = dateStr.includes(" - ") ? dateStr.split(" - ")[0] : dateStr;
+    const parts = cleanDate.split("-");
     return { year: parts[0] || "", month: parts[1] || "" };
   };
   
-  const fromDate = parseMonth(initialDate.includes(" - ") ? initialDate.split(" - ")[0] : initialDate);
-  const toDate = parseMonth(initialDate.includes(" - ") ? initialDate.split(" - ")[1] : "");
-  
-  const [yearFrom, setYearFrom] = useState(fromDate.year);
-  const [monthFrom, setMonthFrom] = useState(fromDate.month);
-  const [yearTo, setYearTo] = useState(toDate.year);
-  const [monthTo, setMonthTo] = useState(toDate.month);
+  const parsedDate = parseMonth(initialDate);
+  const [year, setYear] = useState(parsedDate.year);
+  const [month, setMonth] = useState(parsedDate.month);
 
   const handleNext = () => {
     if (title.trim()) {
-      const dateFromStr = yearFrom && monthFrom ? `${yearFrom}-${monthFrom}` : "";
-      const dateToStr = yearTo && monthTo ? `${yearTo}-${monthTo}` : "";
-      onNext(title, description, location, dateFromStr, dateToStr);
+      const dateStr = year && month ? `${year}-${month}` : "";
+      onNext(title, description, location, dateStr, "");
     }
   };
 
@@ -113,65 +109,31 @@ export const VideoTitleStep = ({
 
           <div className="space-y-2">
             <Label>Időpont (opcionális)</Label>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Kezdő időpont</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <select
-                    value={yearFrom}
-                    onChange={(e) => setYearFrom(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <option value="">Év</option>
-                    {years.map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={monthFrom}
-                    onChange={(e) => setMonthFrom(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <option value="">Hónap</option>
-                    {months.map((month) => (
-                      <option key={month.value} value={month.value}>
-                        {month.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Befejező időpont (opcionális)</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <select
-                    value={yearTo}
-                    onChange={(e) => setYearTo(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <option value="">Év</option>
-                    {years.map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={monthTo}
-                    onChange={(e) => setMonthTo(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <option value="">Hónap</option>
-                    {months.map((month) => (
-                      <option key={month.value} value={month.value}>
-                        {month.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="">Év</option>
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={month}
+                onChange={(e) => setMonth(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="">Hónap</option>
+                {months.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
