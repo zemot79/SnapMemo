@@ -1,26 +1,22 @@
 import { useState, useEffect } from "react";
 import { MediaItem } from "./Timeline";
-import { X, Scissors, Play, Plus, Trash2, Sparkles } from "lucide-react";
+import { X, Scissors, Play, Plus, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Checkbox } from "./ui/checkbox";
+
 
 interface VideoEditorProps {
   videos: MediaItem[];
   onRemove: (id: string) => void;
   onClipsChange: (id: string, clips: { id: string; startTime: number; endTime: number }[]) => void;
-  transitions?: string[];
-  onTransitionsChange?: (transitions: string[]) => void;
 }
 
 export const VideoEditor = ({
   videos,
   onRemove,
   onClipsChange,
-  transitions = [],
-  onTransitionsChange,
 }: VideoEditorProps) => {
   const [videoDurations, setVideoDurations] = useState<Record<string, number>>({});
 
@@ -89,24 +85,6 @@ export const VideoEditor = ({
     onClipsChange(videoId, clips);
   };
 
-  const availableTransitions = [
-    { id: "fade", name: "Elhalványulás" },
-    { id: "slideLeft", name: "Csúszás balra" },
-    { id: "slideRight", name: "Csúszás jobbra" },
-    { id: "zoomIn", name: "Ráközelítés" },
-    { id: "zoomOut", name: "Kitakarás" },
-    { id: "wipe", name: "Törlés" },
-  ];
-
-  const handleTransitionToggle = (transitionId: string) => {
-    if (!onTransitionsChange) return;
-    
-    const newTransitions = transitions.includes(transitionId)
-      ? transitions.filter((t) => t !== transitionId)
-      : [...transitions, transitionId];
-    
-    onTransitionsChange(newTransitions);
-  };
 
   if (videos.length === 0) {
     return (
@@ -118,38 +96,6 @@ export const VideoEditor = ({
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      {/* Transitions Section */}
-      <Card className="p-6">
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            <h3 className="text-lg font-semibold">Áttűnések</h3>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Válaszd ki az áttűnés típusokat, amiket használni szeretnél a videóban. Random sorrendben fognak megjelenni.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {availableTransitions.map((transition) => (
-              <div
-                key={transition.id}
-                className="flex items-center space-x-2 p-3 bg-secondary/50 rounded-lg hover:bg-secondary transition-colors"
-              >
-                <Checkbox
-                  id={transition.id}
-                  checked={transitions.includes(transition.id)}
-                  onCheckedChange={() => handleTransitionToggle(transition.id)}
-                />
-                <label
-                  htmlFor={transition.id}
-                  className="text-sm font-medium leading-none cursor-pointer"
-                >
-                  {transition.name}
-                </label>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Card>
       {videos.map((video) => {
         const duration = videoDurations[video.id] || 0;
         const clips = video.clips || [];

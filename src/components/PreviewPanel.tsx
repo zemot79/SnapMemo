@@ -172,6 +172,9 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
           ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
         };
         
+        // Always draw the image first
+        drawStatic();
+        
         if (focalPoint && isPlaying) {
           // Animate zoom to focal point
           const startTime = Date.now();
