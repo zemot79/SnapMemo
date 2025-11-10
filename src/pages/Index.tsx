@@ -344,6 +344,9 @@ const Index = () => {
                 audioFile={audioFile} 
                 transitions={transitions}
                 location={videoLocation}
+                videoTitle={videoTitle}
+                videoDescription={videoDescription}
+                videoDate={videoDate}
               />
             </div>
           )}

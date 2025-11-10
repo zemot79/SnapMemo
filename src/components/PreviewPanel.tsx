@@ -10,9 +10,12 @@ interface PreviewPanelProps {
   audioFile?: File | null;
   transitions?: string[];
   location?: string;
+  videoTitle?: string;
+  videoDescription?: string;
+  videoDate?: string;
 }
 
-export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], location }: PreviewPanelProps) => {
+export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], location, videoTitle, videoDescription, videoDate }: PreviewPanelProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -716,82 +719,120 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], locatio
   }, []);
 
   return (
-    <div className="bg-card rounded-lg border border-border p-6 h-full flex flex-col gap-4">
-      <div className="flex-1 flex items-center justify-center bg-black rounded-lg overflow-hidden relative">
-        {showGlobeAnimation && coordinates && (
-          <div className="absolute inset-0 z-10 w-full h-full min-h-[600px]">
-            <GlobeAnimation
-              targetLat={coordinates.lat}
-              targetLon={coordinates.lon}
-              locationName={location || coordinates.displayName}
-              onComplete={handleGlobeAnimationComplete}
+    <div className="bg-card rounded-lg border border-border p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left side - Video canvas */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex-1 flex items-center justify-center bg-black rounded-lg overflow-hidden relative aspect-video">
+            {showGlobeAnimation && coordinates && (
+              <div className="absolute inset-0 z-10 w-full h-full min-h-[600px]">
+                <GlobeAnimation
+                  targetLat={coordinates.lat}
+                  targetLon={coordinates.lon}
+                  locationName={location || coordinates.displayName}
+                  onComplete={handleGlobeAnimationComplete}
+                />
+              </div>
+            )}
+            <canvas
+              ref={canvasRef}
+              width={1920}
+              height={1080}
+              className={`max-w-full max-h-full object-contain ${showGlobeAnimation ? 'invisible' : 'visible'}`}
             />
           </div>
-        )}
-        <canvas
-          ref={canvasRef}
-          width={1920}
-          height={1080}
-          className={`max-w-full max-h-full object-contain ${showGlobeAnimation ? 'invisible' : 'visible'}`}
-        />
-      </div>
-      
-      <div className="space-y-4">
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>
-            {currentIndex + 1} / {items.length}
-            {currentItem?.type === "video" && currentItem.clips && currentItem.clips.length > 0 
-              ? ` (Klip ${currentClipIndex + 1}/${currentItem.clips.length})`
-              : ""
-            }
-          </span>
-          <span>{progress.toFixed(1)}s / {currentItem?.duration.toFixed(1)}s</span>
-        </div>
-        
-        <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
-          <div
-            className="bg-primary h-full transition-all duration-100"
-            style={{ width: `${Math.min(progressPercentage, 100)}%` }}
-          />
-        </div>
-        
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            onClick={handlePlayPause}
-            size="lg"
-            className="gap-2"
-            disabled={showGlobeAnimation}
-          >
-            {isPlaying ? (
-              <>
-                <Pause className="h-5 w-5" />
-                Szünet
-              </>
-            ) : (
-              <>
-                <Play className="h-5 w-5" />
-                Lejátszás
-              </>
-            )}
-          </Button>
           
-          <Button
-            onClick={handleReset}
-            size="lg"
-            variant="outline"
-            className="gap-2"
-            disabled={showGlobeAnimation}
-          >
-            <RotateCcw className="h-5 w-5" />
-            Újra
-          </Button>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>
+                {currentIndex + 1} / {items.length}
+                {currentItem?.type === "video" && currentItem.clips && currentItem.clips.length > 0 
+                  ? ` (Klip ${currentClipIndex + 1}/${currentItem.clips.length})`
+                  : ""
+                }
+              </span>
+              <span>{progress.toFixed(1)}s / {currentItem?.duration.toFixed(1)}s</span>
+            </div>
+            
+            <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-primary h-full transition-all duration-100"
+                style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+              />
+            </div>
+            
+            <div className="flex items-center justify-center gap-2">
+              <Button
+                onClick={handlePlayPause}
+                size="lg"
+                className="gap-2"
+                disabled={showGlobeAnimation}
+              >
+                {isPlaying ? (
+                  <>
+                    <Pause className="h-5 w-5" />
+                    Szünet
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-5 w-5" />
+                    Lejátszás
+                  </>
+                )}
+              </Button>
+              
+              <Button
+                onClick={handleReset}
+                size="lg"
+                variant="outline"
+                className="gap-2"
+                disabled={showGlobeAnimation}
+              >
+                <RotateCcw className="h-5 w-5" />
+                Újra
+              </Button>
+            </div>
+            
+            {audioFile && (
+              <div className="text-center text-sm text-muted-foreground">
+                🎵 Háttérzene: {audioFile.name}
+              </div>
+            )}
+          </div>
         </div>
         
-        {audioFile && (
-          <div className="text-center text-sm text-muted-foreground">
-            🎵 Háttérzene: {audioFile.name}
+        {/* Right side - Video information */}
+        <div className="lg:col-span-1 space-y-6">
+          <div className="space-y-4">
+            {videoTitle && (
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Videó címe</h3>
+                <p className="text-lg font-semibold">{videoTitle}</p>
+              </div>
+            )}
+            
+            {videoDescription && (
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Leírás</h3>
+                <p className="text-sm">{videoDescription}</p>
+              </div>
+            )}
+            
+            {location && (
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Helyszín</h3>
+                <p className="text-sm">{location}</p>
+              </div>
+            )}
+            
+            {videoDate && (
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Időpont</h3>
+                <p className="text-sm">{videoDate}</p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

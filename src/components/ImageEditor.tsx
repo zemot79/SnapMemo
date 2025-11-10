@@ -39,8 +39,8 @@ export const ImageEditor = ({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {images.map((image) => (
-        <Card key={image.id} className="overflow-hidden group relative">
+      {images.map((image, index) => (
+        <Card key={image.id} className={`overflow-hidden group relative ${index === 0 ? 'ring-4 ring-primary' : ''}`}>
           <div
             className="relative aspect-video bg-muted cursor-crosshair"
             onClick={(e) => handleImageClick(e, image.id)}
@@ -76,7 +76,14 @@ export const ImageEditor = ({
             </Button>
           </div>
           <div className="p-3 bg-card">
-            <p className="text-sm font-medium truncate">{image.file.name}</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-sm font-medium truncate">{image.file.name}</p>
+              {index === 0 && (
+                <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded">
+                  Thumbnail
+                </span>
+              )}
+            </div>
             <div className="flex items-center justify-between mt-2">
               <p className="text-xs text-muted-foreground">
                 {image.focalPoint

@@ -27,6 +27,13 @@ export const ExportPanel = ({ onExport, disabled }: ExportPanelProps) => {
       toast.error("Adj hozzá legalább egy médiát az exportáláshoz");
       return;
     }
+    
+    // Create a download link
+    const link = document.createElement('a');
+    link.download = `video_export_${Date.now()}.${format}`;
+    link.href = '#'; // Placeholder - actual video rendering would happen here
+    link.click();
+    
     onExport({ format, quality, fps });
     toast.success("Exportálás megkezdve...");
   };
