@@ -5,7 +5,7 @@ import { AudioUploader } from "@/components/AudioUploader";
 import { Timeline, MediaItem } from "@/components/Timeline";
 import { ImageEditor } from "@/components/ImageEditor";
 import { VideoEditor } from "@/components/VideoEditor";
-import { PreviewPanel } from "@/components/PreviewPanel";
+import { PreviewPanel, PreviewPanelRef } from "@/components/PreviewPanel";
 import { ExportPanel, ExportSettings } from "@/components/ExportPanel";
 import { VideoTitleStep } from "@/components/VideoTitleStep";
 import { Stepper, Step } from "@/components/Stepper";
@@ -24,6 +24,7 @@ const steps: Step[] = [
 
 const Index = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const previewPanelRef = useRef<PreviewPanelRef>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [videoTitle, setVideoTitle] = useState("");
   const [videoDescription, setVideoDescription] = useState("");
@@ -115,10 +116,21 @@ const Index = () => {
     []
   );
 
-  const handleExport = useCallback((settings: ExportSettings) => {
+  const handleExport = useCallback((settings: ExportSettings): number => {
     console.log("Exportálás beállításokkal:", settings);
-    toast.info("Az exportálás funkció fejlesztés alatt áll");
-  }, []);
+    
+    // Calculate total duration from all media items
+    const totalDuration = mediaItems.reduce((total, item) => total + item.duration, 0);
+    
+    // Start playback
+    if (previewPanelRef.current) {
+      previewPanelRef.current.startPlayback();
+    }
+    
+    toast.info(`Videó rögzítése indul... (${Math.ceil(totalDuration)} mp)`);
+    
+    return totalDuration;
+  }, [mediaItems]);
 
   const getImageCount = () => mediaItems.filter((item) => item.type === "image").length;
   const getVideoCount = () => mediaItems.filter((item) => item.type === "video").length;
@@ -343,6 +355,7 @@ const Index = () => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                   <PreviewPanel 
+                    ref={previewPanelRef}
                     items={mediaItems} 
                     audioFile={audioFile} 
                     transitions={transitions}

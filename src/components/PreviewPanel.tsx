@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import { Play, Pause, RotateCcw } from "lucide-react";
 import { Button } from "./ui/button";
 import { MediaItem } from "./Timeline";
@@ -14,9 +14,15 @@ interface PreviewPanelProps {
   videoDescription?: string;
   videoDate?: string;
   canvasRef?: React.RefObject<HTMLCanvasElement>;
+  onPlaybackComplete?: () => void;
 }
 
-export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], location, videoTitle, videoDescription, videoDate, canvasRef: externalCanvasRef }: PreviewPanelProps) => {
+export interface PreviewPanelRef {
+  startPlayback: () => void;
+  resetPlayback: () => void;
+}
+
+export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ items, audioFile, transitions = ["fade"], location, videoTitle, videoDescription, videoDate, canvasRef: externalCanvasRef, onPlaybackComplete }, ref) => {
   const internalCanvasRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = externalCanvasRef || internalCanvasRef;
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -38,6 +44,24 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], locatio
   const [showGlobeAnimation, setShowGlobeAnimation] = useState(false);
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [isLoadingCoordinates, setIsLoadingCoordinates] = useState(false);
+
+  // Expose methods to parent
+  useImperativeHandle(ref, () => ({
+    startPlayback: () => {
+      handleReset();
+      setTimeout(() => setIsPlaying(true), 100);
+    },
+    resetPlayback: () => {
+      handleReset();
+    }
+  }));
+
+  // Auto-start playback if requested
+  useEffect(() => {
+    if (items.length > 0 && !isPlaying) {
+      // Removed auto-play, will be triggered via ref
+    }
+  }, []);
 
   // Geocode location when component mounts
   useEffect(() => {
@@ -391,6 +415,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], locatio
               return 0;
             } else {
               setIsPlaying(false);
+              if (onPlaybackComplete) onPlaybackComplete();
               return 0;
             }
           }
@@ -408,6 +433,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], locatio
               return 0;
             } else {
               setIsPlaying(false);
+              if (onPlaybackComplete) onPlaybackComplete();
               return clipDuration;
             }
           }
@@ -423,6 +449,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], locatio
               return 0;
             } else {
               setIsPlaying(false);
+              if (onPlaybackComplete) onPlaybackComplete();
               return clipDuration;
             }
           }
@@ -458,6 +485,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], locatio
               return 0;
             } else {
               setIsPlaying(false);
+              if (onPlaybackComplete) onPlaybackComplete();
               return currentItem.duration;
             }
           }
@@ -838,4 +866,4 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], locatio
       </div>
     </div>
   );
-};
+});

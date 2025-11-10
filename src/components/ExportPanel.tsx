@@ -7,7 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 interface ExportPanelProps {
-  onExport: (settings: ExportSettings) => void;
+  onExport: (settings: ExportSettings) => number;
   disabled: boolean;
   canvasRef?: React.RefObject<HTMLCanvasElement>;
 }
@@ -42,6 +42,10 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
         toast.error("A böngésző nem támogatja a videó rögzítést");
         return;
       }
+      
+      // Calculate total video duration
+      const totalDuration = onExport({ format, quality, fps });
+      const durationMs = totalDuration * 1000;
       
       // Start recording
       const stream = canvas.captureStream(fps);
@@ -94,16 +98,14 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
       
       // Start recording
       recorder.start(100);
-      toast.info("Rögzítés folyamatban... 10 másodperc");
+      toast.info(`Rögzítés folyamatban... ${Math.ceil(totalDuration)} másodperc`);
       
-      // Stop after 10 seconds
+      // Stop after total duration
       setTimeout(() => {
         if (recorder.state === 'recording') {
           recorder.stop();
         }
-      }, 10000);
-      
-      onExport({ format, quality, fps });
+      }, durationMs + 500); // Add 500ms buffer
       
     } catch (error) {
       console.error("Export error:", error);
