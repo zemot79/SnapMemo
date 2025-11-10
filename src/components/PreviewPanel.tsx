@@ -13,10 +13,12 @@ interface PreviewPanelProps {
   videoTitle?: string;
   videoDescription?: string;
   videoDate?: string;
+  canvasRef?: React.RefObject<HTMLCanvasElement>;
 }
 
-export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], location, videoTitle, videoDescription, videoDate }: PreviewPanelProps) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], location, videoTitle, videoDescription, videoDate, canvasRef: externalCanvasRef }: PreviewPanelProps) => {
+  const internalCanvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = externalCanvasRef || internalCanvasRef;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);

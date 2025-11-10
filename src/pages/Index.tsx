@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { ImageUploader } from "@/components/ImageUploader";
 import { VideoUploader } from "@/components/VideoUploader";
 import { AudioUploader } from "@/components/AudioUploader";
@@ -24,6 +24,7 @@ const steps: Step[] = [
 ];
 
 const Index = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [videoTitle, setVideoTitle] = useState("");
   const [videoDescription, setVideoDescription] = useState("");
@@ -347,6 +348,7 @@ const Index = () => {
                 videoTitle={videoTitle}
                 videoDescription={videoDescription}
                 videoDate={videoDate}
+                canvasRef={canvasRef}
               />
             </div>
           )}
@@ -363,6 +365,7 @@ const Index = () => {
               <ExportPanel
                 onExport={handleExport}
                 disabled={mediaItems.length === 0}
+                canvasRef={canvasRef}
               />
             </div>
           )}
