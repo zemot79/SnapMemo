@@ -717,9 +717,9 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], locatio
 
   return (
     <div className="bg-card rounded-lg border border-border p-6 h-full flex flex-col gap-4">
-      <div className="flex-1 flex items-center justify-center bg-black rounded-lg overflow-hidden">
-        {showGlobeAnimation && coordinates ? (
-          <div className="w-full h-full min-h-[600px]">
+      <div className="flex-1 flex items-center justify-center bg-black rounded-lg overflow-hidden relative">
+        {showGlobeAnimation && coordinates && (
+          <div className="absolute inset-0 z-10 w-full h-full min-h-[600px]">
             <GlobeAnimation
               targetLat={coordinates.lat}
               targetLon={coordinates.lon}
@@ -727,14 +727,13 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], locatio
               onComplete={handleGlobeAnimationComplete}
             />
           </div>
-        ) : (
-          <canvas
-            ref={canvasRef}
-            width={1920}
-            height={1080}
-            className="max-w-full max-h-full object-contain"
-          />
         )}
+        <canvas
+          ref={canvasRef}
+          width={1920}
+          height={1080}
+          className={`max-w-full max-h-full object-contain ${showGlobeAnimation ? 'invisible' : 'visible'}`}
+        />
       </div>
       
       <div className="space-y-4">

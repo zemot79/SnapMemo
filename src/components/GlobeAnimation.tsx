@@ -118,7 +118,14 @@ export const GlobeAnimation = ({ targetLat, targetLon, locationName, onComplete 
     <div className="relative w-full h-full bg-black">
       <Canvas
         camera={{ position: [0, 0, 8], fov: 45 }}
-        gl={{ antialias: true, alpha: true }}
+        gl={{ 
+          antialias: true, 
+          alpha: true,
+          preserveDrawingBuffer: true
+        }}
+        onCreated={({ gl }) => {
+          gl.setClearColor('#000000', 1);
+        }}
       >
         <Globe targetLat={targetLat} targetLon={targetLon} onComplete={onComplete} />
       </Canvas>
