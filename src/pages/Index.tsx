@@ -31,6 +31,7 @@ const Index = () => {
   const [videoDate, setVideoDate] = useState("");
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [transitions, setTransitions] = useState<string[]>(["fade"]);
 
   const handleTitleNext = useCallback((title: string, description: string, location: string, dateFrom: string, dateTo: string) => {
     setVideoTitle(title);
@@ -233,6 +234,8 @@ const Index = () => {
                     videos={mediaItems.filter((item) => item.type === "video")}
                     onRemove={handleRemove}
                     onClipsChange={handleClipsChange}
+                    transitions={transitions}
+                    onTransitionsChange={setTransitions}
                   />
                 </div>
               )}
@@ -287,7 +290,7 @@ const Index = () => {
                   Nézd meg, hogyan fog kinézni a videód
                 </p>
               </div>
-              <PreviewPanel items={mediaItems} audioFile={audioFile} />
+              <PreviewPanel items={mediaItems} audioFile={audioFile} transitions={transitions} />
             </div>
           )}
 

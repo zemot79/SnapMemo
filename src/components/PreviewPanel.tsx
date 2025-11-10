@@ -6,18 +6,111 @@ import { MediaItem } from "./Timeline";
 interface PreviewPanelProps {
   items: MediaItem[];
   audioFile?: File | null;
+  transitions?: string[];
 }
 
-export const PreviewPanel = ({ items, audioFile }: PreviewPanelProps) => {
+export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: PreviewPanelProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const imageAnimationRef = useRef<number | null>(null);
+  const transitionFrameRef = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [currentClipIndex, setCurrentClipIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionProgress, setTransitionProgress] = useState(0);
+  const previousImageRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Get random transition
+  const getRandomTransition = () => {
+    if (transitions.length === 0) return "fade";
+    return transitions[Math.floor(Math.random() * transitions.length)];
+  };
+
+  // Apply transition effect
+  const applyTransition = (
+    ctx: CanvasRenderingContext2D,
+    prevCanvas: HTMLCanvasElement,
+    currentImage: HTMLImageElement | HTMLVideoElement,
+    progress: number,
+    transitionType: string
+  ) => {
+    const canvas = ctx.canvas;
+    
+    switch (transitionType) {
+      case "fade":
+        // Draw previous image
+        ctx.globalAlpha = 1 - progress;
+        ctx.drawImage(prevCanvas, 0, 0);
+        // Draw current image
+        ctx.globalAlpha = progress;
+        const scale = Math.min(canvas.width / currentImage.width, canvas.height / currentImage.height);
+        const x = (canvas.width - currentImage.width * scale) / 2;
+        const y = (canvas.height - currentImage.height * scale) / 2;
+        ctx.drawImage(currentImage, x, y, currentImage.width * scale, currentImage.height * scale);
+        ctx.globalAlpha = 1;
+        break;
+        
+      case "slideLeft":
+        ctx.drawImage(prevCanvas, -canvas.width * progress, 0);
+        const scaleLeft = Math.min(canvas.width / currentImage.width, canvas.height / currentImage.height);
+        const xLeft = canvas.width * (1 - progress) + (canvas.width - currentImage.width * scaleLeft) / 2;
+        const yLeft = (canvas.height - currentImage.height * scaleLeft) / 2;
+        ctx.drawImage(currentImage, xLeft, yLeft, currentImage.width * scaleLeft, currentImage.height * scaleLeft);
+        break;
+        
+      case "slideRight":
+        ctx.drawImage(prevCanvas, canvas.width * progress, 0);
+        const scaleRight = Math.min(canvas.width / currentImage.width, canvas.height / currentImage.height);
+        const xRight = -canvas.width * (1 - progress) + (canvas.width - currentImage.width * scaleRight) / 2;
+        const yRight = (canvas.height - currentImage.height * scaleRight) / 2;
+        ctx.drawImage(currentImage, xRight, yRight, currentImage.width * scaleRight, currentImage.height * scaleRight);
+        break;
+        
+      case "zoomIn":
+        ctx.globalAlpha = 1 - progress;
+        ctx.drawImage(prevCanvas, 0, 0);
+        ctx.globalAlpha = progress;
+        const zoomScale = Math.min(canvas.width / currentImage.width, canvas.height / currentImage.height) * progress;
+        const xZoom = (canvas.width - currentImage.width * zoomScale) / 2;
+        const yZoom = (canvas.height - currentImage.height * zoomScale) / 2;
+        ctx.drawImage(currentImage, xZoom, yZoom, currentImage.width * zoomScale, currentImage.height * zoomScale);
+        ctx.globalAlpha = 1;
+        break;
+        
+      case "zoomOut":
+        const zoomOutScale = Math.min(canvas.width / currentImage.width, canvas.height / currentImage.height);
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.scale(2 - progress, 2 - progress);
+        ctx.translate(-canvas.width / 2, -canvas.height / 2);
+        ctx.globalAlpha = 1 - progress;
+        ctx.drawImage(prevCanvas, 0, 0);
+        ctx.restore();
+        ctx.globalAlpha = progress;
+        const xZoomOut = (canvas.width - currentImage.width * zoomOutScale) / 2;
+        const yZoomOut = (canvas.height - currentImage.height * zoomOutScale) / 2;
+        ctx.drawImage(currentImage, xZoomOut, yZoomOut, currentImage.width * zoomOutScale, currentImage.height * zoomOutScale);
+        ctx.globalAlpha = 1;
+        break;
+        
+      case "wipe":
+        ctx.drawImage(prevCanvas, 0, 0);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, canvas.width * progress, canvas.height);
+        ctx.clip();
+        const scaleWipe = Math.min(canvas.width / currentImage.width, canvas.height / currentImage.height);
+        const xWipe = (canvas.width - currentImage.width * scaleWipe) / 2;
+        const yWipe = (canvas.height - currentImage.height * scaleWipe) / 2;
+        ctx.drawImage(currentImage, xWipe, yWipe, currentImage.width * scaleWipe, currentImage.height * scaleWipe);
+        ctx.restore();
+        break;
+    }
+  };
 
   // Render current item on canvas
   useEffect(() => {
@@ -46,12 +139,27 @@ export const PreviewPanel = ({ items, audioFile }: PreviewPanelProps) => {
       cancelAnimationFrame(imageAnimationRef.current);
       imageAnimationRef.current = null;
     }
+    if (transitionFrameRef.current) {
+      cancelAnimationFrame(transitionFrameRef.current);
+      transitionFrameRef.current = null;
+    }
 
     if (item.type === "image") {
       const img = new Image();
       img.src = URL.createObjectURL(item.file);
       img.onload = () => {
         const focalPoint = item.focalPoint;
+        
+        // Save current canvas state for transition
+        if (currentIndex > 0 && !previousImageRef.current) {
+          previousImageRef.current = document.createElement('canvas');
+          previousImageRef.current.width = canvas.width;
+          previousImageRef.current.height = canvas.height;
+          const prevCtx = previousImageRef.current.getContext('2d');
+          if (prevCtx) {
+            prevCtx.drawImage(canvas, 0, 0);
+          }
+        }
         
         // Draw static image function
         const drawStatic = () => {
@@ -196,6 +304,9 @@ export const PreviewPanel = ({ items, audioFile }: PreviewPanelProps) => {
       if (imageAnimationRef.current) {
         cancelAnimationFrame(imageAnimationRef.current);
       }
+      if (transitionFrameRef.current) {
+        cancelAnimationFrame(transitionFrameRef.current);
+      }
     };
   }, [items, currentIndex, isPlaying, currentClipIndex]);
 
@@ -256,10 +367,32 @@ export const PreviewPanel = ({ items, audioFile }: PreviewPanelProps) => {
           }
         } else {
           // Handle normal duration
+          const transitionDuration = 0.5; // 0.5 seconds for transition
+          
+          if (prev >= currentItem.duration - transitionDuration && !isTransitioning && currentIndex < items.length - 1) {
+            // Start transition
+            setIsTransitioning(true);
+            setTransitionProgress(0);
+            
+            // Capture current canvas state
+            if (canvasRef.current && !previousImageRef.current) {
+              previousImageRef.current = document.createElement('canvas');
+              previousImageRef.current.width = canvasRef.current.width;
+              previousImageRef.current.height = canvasRef.current.height;
+              const prevCtx = previousImageRef.current.getContext('2d');
+              if (prevCtx) {
+                prevCtx.drawImage(canvasRef.current, 0, 0);
+              }
+            }
+          }
+          
           if (prev >= currentItem.duration) {
             if (currentIndex < items.length - 1) {
               setCurrentIndex(currentIndex + 1);
               setCurrentClipIndex(0);
+              setIsTransitioning(false);
+              setTransitionProgress(0);
+              previousImageRef.current = null;
               return 0;
             } else {
               setIsPlaying(false);
@@ -301,6 +434,9 @@ export const PreviewPanel = ({ items, audioFile }: PreviewPanelProps) => {
     setCurrentIndex(0);
     setCurrentClipIndex(0);
     setProgress(0);
+    setIsTransitioning(false);
+    setTransitionProgress(0);
+    previousImageRef.current = null;
     
     if (videoRef.current) {
       videoRef.current.pause();
