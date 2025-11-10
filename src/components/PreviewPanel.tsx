@@ -2,14 +2,17 @@ import React, { useEffect, useRef, useState } from "react";
 import { Play, Pause, RotateCcw } from "lucide-react";
 import { Button } from "./ui/button";
 import { MediaItem } from "./Timeline";
+import { GlobeAnimation } from "./GlobeAnimation";
+import { geocodeLocation, Coordinates } from "@/lib/geocoding";
 
 interface PreviewPanelProps {
   items: MediaItem[];
   audioFile?: File | null;
   transitions?: string[];
+  location?: string;
 }
 
-export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: PreviewPanelProps) => {
+export const PreviewPanel = ({ items, audioFile, transitions = ["fade"], location }: PreviewPanelProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -25,6 +28,33 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionProgress, setTransitionProgress] = useState(0);
   const previousImageRef = useRef<HTMLCanvasElement | null>(null);
+  
+  // Globe animation state
+  const [showGlobeAnimation, setShowGlobeAnimation] = useState(false);
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
+  const [isLoadingCoordinates, setIsLoadingCoordinates] = useState(false);
+
+  // Geocode location when component mounts
+  useEffect(() => {
+    if (location && location.trim() !== "") {
+      setIsLoadingCoordinates(true);
+      geocodeLocation(location)
+        .then((coords) => {
+          if (coords) {
+            console.log('Geocoded location:', coords);
+            setCoordinates(coords);
+          } else {
+            console.warn('Could not geocode location:', location);
+          }
+        })
+        .catch((err) => {
+          console.error('Geocoding error:', err);
+        })
+        .finally(() => {
+          setIsLoadingCoordinates(false);
+        });
+    }
+  }, [location]);
 
   // Get random transition
   const getRandomTransition = () => {
@@ -562,6 +592,12 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
   }, [items]);
 
   const handlePlayPause = () => {
+    // If there's a location and globe animation hasn't been shown yet, show it
+    if (coordinates && !showGlobeAnimation && !isPlaying && currentIndex === 0 && progress === 0) {
+      setShowGlobeAnimation(true);
+      return;
+    }
+    
     const newPlayingState = !isPlaying;
     setIsPlaying(newPlayingState);
     
@@ -588,6 +624,19 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
     }
   };
 
+  const handleGlobeAnimationComplete = () => {
+    console.log('Globe animation complete');
+    setShowGlobeAnimation(false);
+    setIsPlaying(true);
+    
+    // Start audio if present
+    if (audioRef.current) {
+      audioRef.current.play().catch(err => {
+        console.error('Audio play error:', err);
+      });
+    }
+  };
+
   const handleReset = () => {
     console.log('Reset');
     setIsPlaying(false);
@@ -596,6 +645,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
     setProgress(0);
     setIsTransitioning(false);
     setTransitionProgress(0);
+    setShowGlobeAnimation(false);
     previousImageRef.current = null;
     
     if (videoRef.current) {
@@ -668,12 +718,23 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
   return (
     <div className="bg-card rounded-lg border border-border p-6 h-full flex flex-col gap-4">
       <div className="flex-1 flex items-center justify-center bg-black rounded-lg overflow-hidden">
-        <canvas
-          ref={canvasRef}
-          width={1920}
-          height={1080}
-          className="max-w-full max-h-full object-contain"
-        />
+        {showGlobeAnimation && coordinates ? (
+          <div className="w-full h-full min-h-[600px]">
+            <GlobeAnimation
+              targetLat={coordinates.lat}
+              targetLon={coordinates.lon}
+              locationName={location || coordinates.displayName}
+              onComplete={handleGlobeAnimationComplete}
+            />
+          </div>
+        ) : (
+          <canvas
+            ref={canvasRef}
+            width={1920}
+            height={1080}
+            className="max-w-full max-h-full object-contain"
+          />
+        )}
       </div>
       
       <div className="space-y-4">
@@ -700,6 +761,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
             onClick={handlePlayPause}
             size="lg"
             className="gap-2"
+            disabled={showGlobeAnimation}
           >
             {isPlaying ? (
               <>
@@ -719,6 +781,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
             size="lg"
             variant="outline"
             className="gap-2"
+            disabled={showGlobeAnimation}
           >
             <RotateCcw className="h-5 w-5" />
             Újra

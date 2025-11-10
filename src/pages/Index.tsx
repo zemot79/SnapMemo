@@ -339,7 +339,12 @@ const Index = () => {
                   Nézd meg, hogyan fog kinézni a videód
                 </p>
               </div>
-              <PreviewPanel items={mediaItems} audioFile={audioFile} transitions={transitions} />
+              <PreviewPanel 
+                items={mediaItems} 
+                audioFile={audioFile} 
+                transitions={transitions}
+                location={videoLocation}
+              />
             </div>
           )}
 
