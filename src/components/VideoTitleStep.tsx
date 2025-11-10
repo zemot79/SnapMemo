@@ -23,15 +23,46 @@ export const VideoTitleStep = ({
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [location, setLocation] = useState(initialLocation);
-  // Parse initial date if it contains " - "
-  const [dateFrom, setDateFrom] = useState(initialDate.includes(" - ") ? initialDate.split(" - ")[0] : initialDate);
-  const [dateTo, setDateTo] = useState(initialDate.includes(" - ") ? initialDate.split(" - ")[1] : "");
+  
+  // Parse initial date - format is "YYYY-MM" or "YYYY-MM - YYYY-MM"
+  const parseMonth = (dateStr: string) => {
+    if (!dateStr) return { year: "", month: "" };
+    const parts = dateStr.split("-");
+    return { year: parts[0] || "", month: parts[1] || "" };
+  };
+  
+  const fromDate = parseMonth(initialDate.includes(" - ") ? initialDate.split(" - ")[0] : initialDate);
+  const toDate = parseMonth(initialDate.includes(" - ") ? initialDate.split(" - ")[1] : "");
+  
+  const [yearFrom, setYearFrom] = useState(fromDate.year);
+  const [monthFrom, setMonthFrom] = useState(fromDate.month);
+  const [yearTo, setYearTo] = useState(toDate.year);
+  const [monthTo, setMonthTo] = useState(toDate.month);
 
   const handleNext = () => {
     if (title.trim()) {
-      onNext(title, description, location, dateFrom, dateTo);
+      const dateFromStr = yearFrom && monthFrom ? `${yearFrom}-${monthFrom}` : "";
+      const dateToStr = yearTo && monthTo ? `${yearTo}-${monthTo}` : "";
+      onNext(title, description, location, dateFromStr, dateToStr);
     }
   };
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 50 }, (_, i) => currentYear - i);
+  const months = [
+    { value: "01", label: "Január" },
+    { value: "02", label: "Február" },
+    { value: "03", label: "Március" },
+    { value: "04", label: "Április" },
+    { value: "05", label: "Május" },
+    { value: "06", label: "Június" },
+    { value: "07", label: "Július" },
+    { value: "08", label: "Augusztus" },
+    { value: "09", label: "Szeptember" },
+    { value: "10", label: "Október" },
+    { value: "11", label: "November" },
+    { value: "12", label: "December" },
+  ];
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -81,22 +112,66 @@ export const VideoTitleStep = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="dateFrom">Időpont (opcionális)</Label>
-            <div className="space-y-2">
-              <Input
-                id="dateFrom"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                placeholder="Kezdő dátum"
-              />
-              <Input
-                id="dateTo"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                placeholder="Befejező dátum (opcionális)"
-              />
+            <Label>Időpont (opcionális)</Label>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Kezdő időpont</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={yearFrom}
+                    onChange={(e) => setYearFrom(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <option value="">Év</option>
+                    {years.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={monthFrom}
+                    onChange={(e) => setMonthFrom(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <option value="">Hónap</option>
+                    {months.map((month) => (
+                      <option key={month.value} value={month.value}>
+                        {month.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Befejező időpont (opcionális)</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={yearTo}
+                    onChange={(e) => setYearTo(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <option value="">Év</option>
+                    {years.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={monthTo}
+                    onChange={(e) => setMonthTo(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <option value="">Hónap</option>
+                    {months.map((month) => (
+                      <option key={month.value} value={month.value}>
+                        {month.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
         </div>
