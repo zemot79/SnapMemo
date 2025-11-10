@@ -23,7 +23,7 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
   const [quality, setQuality] = useState("high");
   const [fps, setFps] = useState(30);
 
-  const handleExport = async () => {
+  const handleExport = () => {
     if (disabled) {
       toast.error("Adj hozzá legalább egy médiát az exportáláshoz");
       return;
@@ -34,70 +34,26 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
       return;
     }
     
-    try {
-      toast.info("Előkészítés...");
-      
-      // First trigger the export to start playback
-      onExport({ format, quality, fps });
-      
-      // Wait a moment for playback to start
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Get canvas stream
-      const canvas = canvasRef.current;
-      const stream = canvas.captureStream(fps);
-      
-      // Determine MIME type
-      let mimeType = 'video/webm;codecs=vp9';
-      if (format === 'mp4' && MediaRecorder.isTypeSupported('video/webm;codecs=h264')) {
-        mimeType = 'video/webm;codecs=h264';
+    const canvas = canvasRef.current;
+    
+    // Simple solution: export current frame as image
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        toast.error("Nem sikerült létrehozni a képet");
+        return;
       }
       
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType,
-        videoBitsPerSecond: getBitrate(quality),
-      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `video_frame_${Date.now()}.png`;
+      link.click();
       
-      const chunks: Blob[] = [];
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-        }
-      };
-      
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `video_${Date.now()}.webm`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        setTimeout(() => URL.revokeObjectURL(url), 100);
-        toast.success("Videó letöltve!");
-      };
-      
-      mediaRecorder.onerror = () => {
-        toast.error("Hiba történt a rögzítés során");
-      };
-      
-      mediaRecorder.start(100);
-      toast.success("Rögzítés folyamatban... 5 másodperc múlva automatikusan leáll.");
-      
-      // Stop after 5 seconds for demo
-      setTimeout(() => {
-        mediaRecorder.stop();
-        stream.getTracks().forEach(track => track.stop());
-      }, 5000);
-      
-    } catch (error) {
-      console.error("Export error:", error);
-      toast.error("Hiba történt az exportálás során");
-    }
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("Kép letöltve! (Teljes videó export fejlesztés alatt)");
+    }, 'image/png');
+    
+    onExport({ format, quality, fps });
   };
   
   const getBitrate = (quality: string): number => {
