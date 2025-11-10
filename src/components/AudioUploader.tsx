@@ -1,128 +1,125 @@
-import { useState, useRef } from "react";
-import { Upload, Music, X } from "lucide-react";
+import { useCallback } from "react";
+import { Upload, Music, X, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "./ui/button";
-import { toast } from "./ui/use-toast";
+import { Card } from "./ui/card";
 
 interface AudioUploaderProps {
-  audio: File | null;
+  audios: File[];
   onAudioAdded: (file: File) => void;
-  onAudioRemoved: () => void;
+  onAudioRemoved: (index: number) => void;
 }
 
-export const AudioUploader = ({
-  audio,
-  onAudioAdded,
-  onAudioRemoved,
-}: AudioUploaderProps) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export const AudioUploader = ({ audios, onAudioAdded, onAudioRemoved }: AudioUploaderProps) => {
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        if (file.type.startsWith("audio/")) {
+          onAudioAdded(file);
+          toast.success("Háttérzene hozzáadva");
+        } else {
+          toast.error("Csak audio fájlokat adhatsz hozzá");
+        }
+      }
+      // Reset input
+      e.target.value = '';
+    },
+    [onAudioAdded]
+  );
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith("audio/")) {
+        onAudioAdded(file);
+        toast.success("Háttérzene hozzáadva");
+      } else {
+        toast.error("Csak audio fájlokat adhatsz hozzá");
+      }
+    },
+    [onAudioAdded]
+  );
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(false);
-
-    const files = Array.from(e.dataTransfer.files);
-    const audioFile = files.find((file) => file.type.startsWith("audio/"));
-
-    if (audioFile) {
-      onAudioAdded(audioFile);
-      toast({
-        title: "Zene feltöltve",
-        description: audioFile.name,
-      });
-    } else {
-      toast({
-        title: "Hiba",
-        description: "Kérlek csak audio fájlt tölts fel",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files[0]) {
-      onAudioAdded(files[0]);
-      toast({
-        title: "Zene feltöltve",
-        description: files[0].name,
-      });
-    }
-  };
+  }, []);
 
   return (
-    <div className="space-y-4">
-      <div className="text-center space-y-2 mb-6">
-        <div className="inline-flex p-3 bg-primary/10 rounded-full">
-          <Music className="w-8 h-8 text-primary" />
-        </div>
-        <h2 className="text-2xl font-bold">Zene aláfestés</h2>
+    <div className="space-y-6">
+      <div className="text-center space-y-2">
+        <h2 className="text-2xl font-bold">Háttérzene</h2>
         <p className="text-muted-foreground">
-          Adj hozzá háttérzenét a videódhoz (opcionális)
+          Adj hozzá háttérzenét a videóhoz
         </p>
       </div>
 
-      {!audio ? (
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-          }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
-            isDragging
-              ? "border-primary bg-primary/5"
-              : "border-border hover:border-primary/50"
-          }`}
-        >
-          <Music className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-lg mb-2">Húzd ide az audio fájlt</p>
-          <p className="text-sm text-muted-foreground mb-4">
-            vagy kattints a tallózáshoz
-          </p>
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            variant="outline"
-            className="gap-2"
-          >
-            <Upload className="w-4 h-4" />
-            Fájl kiválasztása
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="audio/*"
-            onChange={handleFileInput}
-            className="hidden"
-          />
-        </div>
-      ) : (
-        <div className="bg-card rounded-lg border border-border p-6">
-          <div className="flex items-center gap-4">
-            <div className="flex-shrink-0 p-4 bg-primary/10 rounded-lg">
-              <Music className="w-8 h-8 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium truncate">{audio.name}</p>
-              <p className="text-sm text-muted-foreground">
-                {(audio.size / (1024 * 1024)).toFixed(2)} MB
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onAudioRemoved}
-              className="flex-shrink-0"
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-          <audio controls className="w-full mt-4">
-            <source src={URL.createObjectURL(audio)} type={audio.type} />
-          </audio>
+      {audios.length > 0 && (
+        <div className="space-y-3">
+          {audios.map((audio, index) => (
+            <Card key={index} className="p-4 bg-card/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <Music className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{audio.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {(audio.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onAudioRemoved(index)}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </Card>
+          ))}
         </div>
       )}
+
+      <div
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        className="border-2 border-dashed border-primary/30 rounded-lg p-12 text-center hover:border-primary/60 transition-colors cursor-pointer bg-card/50 backdrop-blur"
+      >
+        <input
+          type="file"
+          accept="audio/*"
+          onChange={handleFileInput}
+          className="hidden"
+          id="audio-input"
+        />
+        <label htmlFor="audio-input" className="cursor-pointer">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex gap-4">
+              <div className="p-4 rounded-full bg-primary/10">
+                <Plus className="w-8 h-8 text-primary" />
+              </div>
+              <div className="p-4 rounded-full bg-primary/10">
+                <Music className="w-8 h-8 text-primary" />
+              </div>
+            </div>
+            <div>
+              <p className="text-lg font-semibold text-foreground mb-2">
+                {audios.length === 0 
+                  ? "Húzd ide a háttérzenét vagy kattints a tallózáshoz"
+                  : "Adj hozzá több háttérzenét"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Támogatott formátumok: MP3, WAV, OGG
+              </p>
+            </div>
+          </div>
+        </label>
+      </div>
     </div>
   );
 };

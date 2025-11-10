@@ -32,6 +32,7 @@ const Index = () => {
   const [videoDate, setVideoDate] = useState("");
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioFiles, setAudioFiles] = useState<File[]>([]);
   const [transitions, setTransitions] = useState<string[]>(["fade"]);
 
   const handleTitleNext = useCallback((title: string, description: string, location: string, dateFrom: string, dateTo: string) => {
@@ -335,9 +336,9 @@ const Index = () => {
           {currentStep === 5 && (
             <div className="max-w-2xl mx-auto space-y-6">
               <AudioUploader
-                audio={audioFile}
-                onAudioAdded={setAudioFile}
-                onAudioRemoved={() => setAudioFile(null)}
+                audios={audioFiles}
+                onAudioAdded={(file) => setAudioFiles(prev => [...prev, file])}
+                onAudioRemoved={(index) => setAudioFiles(prev => prev.filter((_, i) => i !== index))}
               />
             </div>
           )}
@@ -357,7 +358,7 @@ const Index = () => {
                   <PreviewPanel 
                     ref={previewPanelRef}
                     items={mediaItems} 
-                    audioFile={audioFile} 
+                    audioFile={audioFiles.length > 0 ? audioFiles[0] : null}
                     transitions={transitions}
                     location={videoLocation}
                     videoTitle={videoTitle}
