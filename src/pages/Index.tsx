@@ -53,7 +53,12 @@ const Index = () => {
       duration: 3,
       thumbnail: URL.createObjectURL(file),
     }));
-    setMediaItems((prev) => [...prev, ...newItems]);
+    setMediaItems((prev) => {
+      const combined = [...prev, ...newItems];
+      // Sort by file creation time (lastModified)
+      return combined.sort((a, b) => a.file.lastModified - b.file.lastModified);
+    });
+    toast.success(`${files.length} kép hozzáadva és időrend szerint rendezve`);
   }, []);
 
   const handleVideosAdded = useCallback((files: File[]) => {
@@ -65,7 +70,12 @@ const Index = () => {
       thumbnail: URL.createObjectURL(file),
       clips: [],
     }));
-    setMediaItems((prev) => [...prev, ...newItems]);
+    setMediaItems((prev) => {
+      const combined = [...prev, ...newItems];
+      // Sort by file creation time (lastModified)
+      return combined.sort((a, b) => a.file.lastModified - b.file.lastModified);
+    });
+    toast.success(`${files.length} videó hozzáadva és időrend szerint rendezve`);
   }, []);
 
   const handleRemove = useCallback((id: string) => {
