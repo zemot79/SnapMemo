@@ -452,16 +452,15 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / transitionDuration, 1);
       
-      // Get current item image/video
+      // Get next item from cache
       const nextIndex = Math.min(currentIndex + 1, items.length - 1);
       const nextItem = items[nextIndex];
       
       if (nextItem && nextItem.type === "image") {
-        const img = new Image();
-        const blobUrl = URL.createObjectURL(nextItem.file);
-        img.src = blobUrl;
+        // Use cached image instead of creating new one
+        const img = loadedImagesRef.current.get(nextIndex);
         
-        img.onload = () => {
+        if (img) {
           applyTransition(ctx, previousImageRef.current!, img, progress, transitionType);
           
           if (progress < 1) {
@@ -470,8 +469,12 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
             setIsTransitioning(false);
             previousImageRef.current = null;
           }
-          URL.revokeObjectURL(blobUrl);
-        };
+        } else {
+          // Image not loaded yet, skip transition
+          console.log('Next image not in cache, skipping transition');
+          setIsTransitioning(false);
+          previousImageRef.current = null;
+        }
       } else {
         // For videos or if no next item, just finish transition
         if (progress < 1) {
@@ -503,12 +506,27 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
     
     const firstItem = items[0];
     if (firstItem.type === "image") {
-      const img = new Image();
-      const blobUrl = URL.createObjectURL(firstItem.file);
-      blobUrlsRef.current.push(blobUrl);
-      img.src = blobUrl;
+      // Use cached image if available, otherwise load it
+      let img = loadedImagesRef.current.get(0);
       
-      img.onload = () => {
+      if (!img) {
+        img = new Image();
+        const blobUrl = URL.createObjectURL(firstItem.file);
+        blobUrlsRef.current.push(blobUrl);
+        img.src = blobUrl;
+        
+        img.onload = () => {
+          loadedImagesRef.current.set(0, img!);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          const scale = Math.min(canvas.width / img!.width, canvas.height / img!.height);
+          const x = (canvas.width - img!.width * scale) / 2;
+          const y = (canvas.height - img!.height * scale) / 2;
+          ctx.drawImage(img!, x, y, img!.width * scale, img!.height * scale);
+        };
+      } else {
+        // Image already cached, render immediately
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -516,7 +534,7 @@ export const PreviewPanel = ({ items, audioFile, transitions = ["fade"] }: Previ
         const x = (canvas.width - img.width * scale) / 2;
         const y = (canvas.height - img.height * scale) / 2;
         ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-      };
+      }
     } else if (firstItem.type === "video") {
       const video = document.createElement("video");
       const blobUrl = URL.createObjectURL(firstItem.file);
