@@ -15,9 +15,9 @@ export const VideoUploader = ({ onFilesAdded }: VideoUploaderProps) => {
       );
       if (files.length > 0) {
         onFilesAdded(files);
-        toast.success(`${files.length} videó hozzáadva`);
+        toast.success(`${files.length} videos added`);
       } else {
-        toast.error("Csak videó fájlokat adhatsz hozzá");
+        toast.error("Only video files can be added");
       }
     },
     [onFilesAdded]
@@ -32,7 +32,7 @@ export const VideoUploader = ({ onFilesAdded }: VideoUploaderProps) => {
       const files = Array.from(e.target.files || []);
       if (files.length > 0) {
         onFilesAdded(files);
-        toast.success(`${files.length} videó hozzáadva`);
+        toast.success(`${files.length} videos added`);
       }
     },
     [onFilesAdded]
@@ -64,10 +64,10 @@ export const VideoUploader = ({ onFilesAdded }: VideoUploaderProps) => {
           </div>
           <div>
             <p className="text-lg font-semibold text-foreground mb-2">
-              Húzd ide a videókat vagy kattints a tallózáshoz
+              Drag videos here or click to browse
             </p>
             <p className="text-sm text-muted-foreground">
-              Támogatott formátumok: MP4, WebM, MOV, AVI
+              Supported formats: MP4, WebM, MOV, AVI
             </p>
           </div>
         </div>

@@ -17,9 +17,9 @@ export const AudioUploader = ({ audios, onAudioAdded, onAudioRemoved }: AudioUpl
       if (file) {
         if (file.type.startsWith("audio/")) {
           onAudioAdded(file);
-          toast.success("Háttérzene hozzáadva");
+          toast.success("Background music added");
         } else {
-          toast.error("Csak audio fájlokat adhatsz hozzá");
+          toast.error("Only audio files can be added");
         }
       }
       // Reset input
@@ -34,9 +34,9 @@ export const AudioUploader = ({ audios, onAudioAdded, onAudioRemoved }: AudioUpl
       const file = e.dataTransfer.files[0];
       if (file && file.type.startsWith("audio/")) {
         onAudioAdded(file);
-        toast.success("Háttérzene hozzáadva");
+        toast.success("Background music added");
       } else {
-        toast.error("Csak audio fájlokat adhatsz hozzá");
+        toast.error("Only audio files can be added");
       }
     },
     [onAudioAdded]
@@ -49,9 +49,9 @@ export const AudioUploader = ({ audios, onAudioAdded, onAudioRemoved }: AudioUpl
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold">Háttérzene</h2>
+        <h2 className="text-2xl font-bold">Background Music</h2>
         <p className="text-muted-foreground">
-          Adj hozzá háttérzenét a videóhoz
+          Add background music to the video
         </p>
       </div>
 
@@ -110,11 +110,11 @@ export const AudioUploader = ({ audios, onAudioAdded, onAudioRemoved }: AudioUpl
             <div>
               <p className="text-lg font-semibold text-foreground mb-2">
                 {audios.length === 0 
-                  ? "Húzd ide a háttérzenét vagy kattints a tallózáshoz"
-                  : "Adj hozzá több háttérzenét"}
+                  ? "Drag background music here or click to browse"
+                  : "Add more background music"}
               </p>
               <p className="text-sm text-muted-foreground">
-                Támogatott formátumok: MP3, WAV, OGG
+                Supported formats: MP3, WAV, OGG
               </p>
             </div>
           </div>

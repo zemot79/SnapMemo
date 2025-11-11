@@ -61,7 +61,7 @@ export const ImageEditor = ({
   if (images.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <p>Még nincs kép hozzáadva</p>
+        <p>No images added yet</p>
       </div>
     );
   }
@@ -137,11 +137,11 @@ export const ImageEditor = ({
             <div className="flex items-center justify-between mt-2">
               <p className="text-xs text-muted-foreground">
                 {image.focalPoint
-                  ? `Fókusz: ${Math.round(image.focalPoint.x)}%, ${Math.round(image.focalPoint.y)}%`
-                  : "Kattints a fókusz megadásához"}
+                  ? `Focus: ${Math.round(image.focalPoint.x)}%, ${Math.round(image.focalPoint.y)}%`
+                  : "Click to set focus"}
               </p>
               <p className="text-xs text-primary font-medium">
-                {image.duration} mp
+                {image.duration} sec
               </p>
             </div>
           </div>

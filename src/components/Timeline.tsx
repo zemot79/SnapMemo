@@ -55,8 +55,8 @@ export const Timeline = ({
   if (items.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <p>Még nincs média hozzáadva</p>
-        <p className="text-sm mt-2">Adj hozzá képeket vagy videókat a kezdéshez</p>
+        <p>No media added yet</p>
+        <p className="text-sm mt-2">Add images or videos to get started</p>
       </div>
     );
   }
@@ -66,11 +66,11 @@ export const Timeline = ({
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Clock className="w-5 h-5 text-primary" />
-          Idővonal ({items.length} elem)
+          Timeline ({items.length} items)
         </h3>
         <div className="text-sm text-muted-foreground">
-          Teljes időtartam:{" "}
-          {Math.round(items.reduce((acc, item) => acc + item.duration, 0))} mp
+          Total duration:{" "}
+          {Math.round(items.reduce((acc, item) => acc + item.duration, 0))} sec
         </div>
       </div>
       <div className="space-y-2">
@@ -103,7 +103,7 @@ export const Timeline = ({
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{item.file.name}</p>
               <p className="text-xs text-muted-foreground">
-                {item.type === "image" ? "Kép" : "Videó"}
+                {item.type === "image" ? "Image" : "Video"}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -117,7 +117,7 @@ export const Timeline = ({
                 max="60"
                 className="w-20 h-9"
               />
-              <span className="text-sm text-muted-foreground">mp</span>
+              <span className="text-sm text-muted-foreground">sec</span>
             </div>
             <Button
               variant="ghost"

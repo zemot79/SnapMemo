@@ -15,9 +15,9 @@ export const ImageUploader = ({ onFilesAdded }: ImageUploaderProps) => {
       );
       if (files.length > 0) {
         onFilesAdded(files);
-        toast.success(`${files.length} kép hozzáadva`);
+        toast.success(`${files.length} images added`);
       } else {
-        toast.error("Csak képfájlokat adhatsz hozzá");
+        toast.error("Only image files can be added");
       }
     },
     [onFilesAdded]
@@ -32,7 +32,7 @@ export const ImageUploader = ({ onFilesAdded }: ImageUploaderProps) => {
       const files = Array.from(e.target.files || []);
       if (files.length > 0) {
         onFilesAdded(files);
-        toast.success(`${files.length} kép hozzáadva`);
+        toast.success(`${files.length} images added`);
       }
     },
     [onFilesAdded]
@@ -64,10 +64,10 @@ export const ImageUploader = ({ onFilesAdded }: ImageUploaderProps) => {
           </div>
           <div>
             <p className="text-lg font-semibold text-foreground mb-2">
-              Húzd ide a képeket vagy kattints a tallózáshoz
+              Drag images here or click to browse
             </p>
             <p className="text-sm text-muted-foreground">
-              Támogatott formátumok: JPG, PNG, GIF, WebP
+              Supported formats: JPG, PNG, GIF, WebP
             </p>
           </div>
         </div>

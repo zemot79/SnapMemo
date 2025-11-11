@@ -116,7 +116,7 @@ export const VideoEditor = ({
   if (videos.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <p>Még nincs videó hozzáadva</p>
+        <p>No videos added yet</p>
       </div>
     );
   }
@@ -173,7 +173,7 @@ export const VideoEditor = ({
                 <div className="flex items-center gap-2 text-white text-sm">
                   <Play className="w-4 h-4" />
                   <span className="font-medium">
-                    {duration > 0 ? `${duration} mp` : "Betöltés..."}
+                    {duration > 0 ? `${duration} sec` : "Loading..."}
                   </span>
                 </div>
               </div>
@@ -185,7 +185,7 @@ export const VideoEditor = ({
                 </p>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Scissors className="w-3 h-3" />
-                  Összes vágás: {totalClipDuration.toFixed(1)} mp ({clips.length} szakasz)
+                  Total clips: {totalClipDuration.toFixed(1)} sec ({clips.length} clips)
                 </p>
               </div>
 
@@ -218,7 +218,7 @@ export const VideoEditor = ({
                         </span>
                         <div className="flex-1 grid grid-cols-2 gap-2">
                           <div className="space-y-1">
-                            <Label className="text-xs">Kezdés (mp)</Label>
+                            <Label className="text-xs">Start (sec)</Label>
                             <Input
                               type="number"
                               value={clip.startTime}
@@ -236,7 +236,7 @@ export const VideoEditor = ({
                             />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs">Befejezés (mp)</Label>
+                            <Label className="text-xs">End (sec)</Label>
                             <Input
                               type="number"
                               value={clip.endTime}
@@ -255,7 +255,7 @@ export const VideoEditor = ({
                           </div>
                         </div>
                         <span className="text-xs text-muted-foreground min-w-[40px]">
-                          {(clip.endTime - clip.startTime).toFixed(1)}mp
+                          {(clip.endTime - clip.startTime).toFixed(1)}s
                         </span>
                         <Button
                           variant="ghost"
@@ -277,7 +277,7 @@ export const VideoEditor = ({
                     className="w-full gap-2"
                   >
                     <Plus className="w-4 h-4" />
-                    Új szakasz hozzáadása
+                    Add new clip
                   </Button>
                 </div>
               )}

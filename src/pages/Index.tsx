@@ -14,12 +14,12 @@ import { Film, ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 const steps: Step[] = [
-  { id: 1, title: "Cím", description: "Video címe" },
-  { id: 2, title: "Képek", description: "Képek feltöltése" },
-  { id: 3, title: "Videók", description: "Videók feltöltése" },
-  { id: 4, title: "Szerkesztés", description: "Timeline" },
-  { id: 5, title: "Zene", description: "Háttérzene" },
-  { id: 6, title: "Előnézet & Export", description: "Megtekintés és mentés" },
+  { id: 1, title: "Title", description: "Video title" },
+  { id: 2, title: "Images", description: "Upload images" },
+  { id: 3, title: "Videos", description: "Upload videos" },
+  { id: 4, title: "Edit", description: "Timeline" },
+  { id: 5, title: "Music", description: "Background music" },
+  { id: 6, title: "Preview & Export", description: "View and save" },
 ];
 
 const Index = () => {
@@ -42,7 +42,7 @@ const Index = () => {
     const fullDate = dateTo ? `${dateFrom} - ${dateTo}` : dateFrom;
     setVideoDate(fullDate);
     setCurrentStep(2);
-    toast.success("Cím mentve!");
+    toast.success("Title saved!");
   }, []);
 
   const handleImagesAdded = useCallback((files: File[]) => {
@@ -58,7 +58,7 @@ const Index = () => {
       // Sort by file creation time (lastModified)
       return combined.sort((a, b) => a.file.lastModified - b.file.lastModified);
     });
-    toast.success(`${files.length} kép hozzáadva és időrend szerint rendezve`);
+    toast.success(`${files.length} images added and sorted chronologically`);
   }, []);
 
   const handleVideosAdded = useCallback((files: File[]) => {
@@ -75,12 +75,12 @@ const Index = () => {
       // Sort by file creation time (lastModified)
       return combined.sort((a, b) => a.file.lastModified - b.file.lastModified);
     });
-    toast.success(`${files.length} videó hozzáadva és időrend szerint rendezve`);
+    toast.success(`${files.length} videos added and sorted chronologically`);
   }, []);
 
   const handleRemove = useCallback((id: string) => {
     setMediaItems((prev) => prev.filter((item) => item.id !== id));
-    toast.success("Elem eltávolítva");
+    toast.success("Item removed");
   }, []);
 
   const handleReorder = useCallback(
@@ -91,7 +91,7 @@ const Index = () => {
         newItems.splice(toIndex, 0, removed);
         return newItems;
       });
-      toast.success("Elem átrendezve");
+      toast.success("Item reordered");
     },
     []
   );
@@ -107,7 +107,7 @@ const Index = () => {
       setMediaItems((prev) =>
         prev.map((item) => (item.id === id ? { ...item, focalPoint } : item))
       );
-      toast.success("Fókuszpont beállítva");
+      toast.success("Focal point set");
     },
     []
   );
@@ -139,7 +139,7 @@ const Index = () => {
       previewPanelRef.current.startPlayback();
     }
     
-    toast.info(`Videó rögzítése indul... (${Math.ceil(totalDuration)} mp)`);
+    toast.info(`Video recording starting... (${Math.ceil(totalDuration)} sec)`);
     
     return totalDuration;
   }, [mediaItems]);
@@ -181,7 +181,7 @@ const Index = () => {
               </h1>
               {videoTitle && (
                 <p className="text-sm text-muted-foreground">
-                  Projekt: {videoTitle}
+                  Project: {videoTitle}
                 </p>
               )}
             </div>
@@ -208,25 +208,25 @@ const Index = () => {
           {currentStep === 2 && (
             <div className="max-w-6xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
-                <h2 className="text-2xl font-bold">Képek feltöltése</h2>
+                <h2 className="text-2xl font-bold">Upload Images</h2>
                 <p className="text-muted-foreground">
-                  Adj hozzá képeket és jelöld ki a főbb téma helyét
+                  Add images and mark the main focal point
                 </p>
                 {getImageCount() > 0 && (
                   <p className="text-sm text-primary font-medium">
-                    {getImageCount()} kép hozzáadva
+                    {getImageCount()} images added
                   </p>
                 )}
               </div>
               <ImageUploader onFilesAdded={handleImagesAdded} />
               {getImageCount() > 0 && (
-                <div className="bg-card rounded-lg border border-border p-6">
+                  <div className="bg-card rounded-lg border border-border p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold">
-                      Kattints a képekre a fókuszpont megadásához
+                      Click on images to set focal point
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      💡 Húzd az elemeket az átrendezéshez
+                      💡 Drag elements to reorder
                     </p>
                   </div>
                   <ImageEditor
@@ -253,25 +253,25 @@ const Index = () => {
           {currentStep === 3 && (
             <div className="max-w-6xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
-                <h2 className="text-2xl font-bold">Videók feltöltése</h2>
+                <h2 className="text-2xl font-bold">Upload Videos</h2>
                 <p className="text-muted-foreground">
-                  Adj hozzá videókat és válaszd ki a lényeges részeket
+                  Add videos and select the important clips
                 </p>
                 {getVideoCount() > 0 && (
                   <p className="text-sm text-accent font-medium">
-                    {getVideoCount()} videó hozzáadva
+                    {getVideoCount()} videos added
                   </p>
                 )}
               </div>
               <VideoUploader onFilesAdded={handleVideosAdded} />
               {getVideoCount() > 0 && (
-                <div className="bg-card rounded-lg border border-border p-6">
+                  <div className="bg-card rounded-lg border border-border p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold">
-                      Add meg a lényeges részek időszakait
+                      Set the time ranges for important clips
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      💡 Húzd az elemeket az átrendezéshez
+                      💡 Drag elements to reorder
                     </p>
                   </div>
                   <VideoEditor
@@ -298,16 +298,16 @@ const Index = () => {
           {currentStep === 4 && (
             <div className="max-w-6xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
-                <h2 className="text-2xl font-bold">Timeline szerkesztés</h2>
+                <h2 className="text-2xl font-bold">Timeline Editing</h2>
                 <p className="text-muted-foreground">
-                  Rendezd át az elemeket és állítsd be az időtartamokat
+                  Reorder elements and set durations
                 </p>
                 <div className="flex gap-4 justify-center text-sm">
                   <span className="text-primary font-medium">
-                    {getImageCount()} kép
+                    {getImageCount()} images
                   </span>
                   <span className="text-accent font-medium">
-                    {getVideoCount()} videó
+                    {getVideoCount()} videos
                   </span>
                 </div>
               </div>
@@ -329,19 +329,19 @@ const Index = () => {
                     <div className="p-2 bg-primary/10 rounded-lg">
                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
                     </div>
-                    <h3 className="text-lg font-semibold">Áttűnések</h3>
+                    <h3 className="text-lg font-semibold">Transitions</h3>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Válaszd ki az áttűnés típusokat, amiket használni szeretnél a videóban. Random sorrendben fognak megjelenni.
+                    Select the transition types you want to use in the video. They will appear in random order.
                   </p>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {[
-                      { id: "fade", name: "Elhalványulás" },
-                      { id: "slideLeft", name: "Csúszás balra" },
-                      { id: "slideRight", name: "Csúszás jobbra" },
-                      { id: "zoomIn", name: "Ráközelítés" },
-                      { id: "zoomOut", name: "Kitakarás" },
-                      { id: "wipe", name: "Törlés" },
+                      { id: "fade", name: "Fade" },
+                      { id: "slideLeft", name: "Slide Left" },
+                      { id: "slideRight", name: "Slide Right" },
+                      { id: "zoomIn", name: "Zoom In" },
+                      { id: "zoomOut", name: "Zoom Out" },
+                      { id: "wipe", name: "Wipe" },
                     ].map((transition) => (
                       <div
                         key={transition.id}
@@ -388,9 +388,9 @@ const Index = () => {
           {currentStep === 6 && (
             <div className="max-w-6xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
-                <h2 className="text-2xl font-bold">Előnézet és Export</h2>
+                <h2 className="text-2xl font-bold">Preview and Export</h2>
                 <p className="text-muted-foreground">
-                  Nézd meg a videót és töltsd le
+                  View the video and download it
                 </p>
               </div>
               
@@ -431,7 +431,7 @@ const Index = () => {
                 className="gap-2"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Vissza
+                Back
               </Button>
               {currentStep < 6 && (
                 <Button
@@ -440,7 +440,7 @@ const Index = () => {
                   disabled={!canGoNext()}
                   className="gap-2"
                 >
-                  Tovább
+                  Next
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               )}

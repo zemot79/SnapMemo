@@ -46,16 +46,16 @@ export const VideoTitleStep = ({
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 50 }, (_, i) => currentYear - i);
   const months = [
-    { value: "01", label: "Január" },
-    { value: "02", label: "Február" },
-    { value: "03", label: "Március" },
-    { value: "04", label: "Április" },
-    { value: "05", label: "Május" },
-    { value: "06", label: "Június" },
-    { value: "07", label: "Július" },
-    { value: "08", label: "Augusztus" },
-    { value: "09", label: "Szeptember" },
-    { value: "10", label: "Október" },
+    { value: "01", label: "January" },
+    { value: "02", label: "February" },
+    { value: "03", label: "March" },
+    { value: "04", label: "April" },
+    { value: "05", label: "May" },
+    { value: "06", label: "June" },
+    { value: "07", label: "July" },
+    { value: "08", label: "August" },
+    { value: "09", label: "September" },
+    { value: "10", label: "October" },
     { value: "11", label: "November" },
     { value: "12", label: "December" },
   ];
@@ -67,55 +67,55 @@ export const VideoTitleStep = ({
           <div className="inline-flex p-3 bg-primary/10 rounded-full mb-2">
             <Film className="w-8 h-8 text-primary" />
           </div>
-          <h2 className="text-2xl font-bold">Új videó projekt</h2>
+          <h2 className="text-2xl font-bold">New Video Project</h2>
           <p className="text-muted-foreground">
-            Add meg a videód címét és egy rövid leírást
+            Enter your video title and a brief description
           </p>
         </div>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Videó címe *</Label>
+            <Label htmlFor="title">Video Title *</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="pl. Nyári vakáció 2024"
+              placeholder="e.g. Summer Vacation 2024"
               className="text-lg"
               autoFocus
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Leírás (opcionális)</Label>
+            <Label htmlFor="description">Description (optional)</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Írj egy rövid leírást a videóról..."
+              placeholder="Write a short description of the video..."
               rows={4}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="location">Helyszín (opcionális)</Label>
+            <Label htmlFor="location">Location (optional)</Label>
             <Input
               id="location"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="pl. Budapest, Magyarország"
+              placeholder="e.g. Budapest, Hungary"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Időpont (opcionális)</Label>
+            <Label>Date (optional)</Label>
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <option value="">Év</option>
+                <option value="">Year</option>
                 {years.map((y) => (
                   <option key={y} value={y}>
                     {y}
@@ -127,7 +127,7 @@ export const VideoTitleStep = ({
                 onChange={(e) => setMonth(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <option value="">Hónap</option>
+                <option value="">Month</option>
                 {months.map((m) => (
                   <option key={m.value} value={m.value}>
                     {m.label}
@@ -144,7 +144,7 @@ export const VideoTitleStep = ({
           size="lg"
           className="w-full gap-2"
         >
-          Tovább a fájlok feltöltéséhez
+          Continue to upload files
           <ArrowRight className="w-4 h-4" />
         </Button>
       </div>

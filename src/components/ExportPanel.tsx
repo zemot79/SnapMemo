@@ -25,12 +25,12 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
 
   const handleExport = async () => {
     if (disabled) {
-      toast.error("Adj hozzá legalább egy médiát az exportáláshoz");
+      toast.error("Add at least one media item to export");
       return;
     }
     
     if (!canvasRef?.current) {
-      toast.error("A canvas nem elérhető");
+      toast.error("Canvas not available");
       return;
     }
     
@@ -39,7 +39,7 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
       
       // Check if MediaRecorder is supported
       if (!window.MediaRecorder) {
-        toast.error("A böngésző nem támogatja a videó rögzítést");
+        toast.error("Browser does not support video recording");
         return;
       }
       
@@ -87,18 +87,18 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
         }, 100);
         
         stream.getTracks().forEach(track => track.stop());
-        toast.success("Videó letöltve!");
+        toast.success("Video downloaded!");
       };
       
       recorder.onerror = (e) => {
         console.error('Recorder error:', e);
-        toast.error("Hiba a rögzítés során");
+        toast.error("Error during recording");
         stream.getTracks().forEach(track => track.stop());
       };
       
       // Start recording
       recorder.start(100);
-      toast.info(`Rögzítés folyamatban... ${Math.ceil(totalDuration)} másodperc`);
+      toast.info(`Recording in progress... ${Math.ceil(totalDuration)} seconds`);
       
       // Stop after total duration
       setTimeout(() => {
@@ -109,7 +109,7 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
       
     } catch (error) {
       console.error("Export error:", error);
-      toast.error("Hiba az exportálás során");
+      toast.error("Error during export");
     }
   };
   
@@ -127,12 +127,12 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
     <div className="bg-card rounded-lg border border-border p-6 space-y-6">
       <div className="flex items-center gap-2">
         <Settings className="w-5 h-5 text-primary" />
-        <h3 className="text-lg font-semibold">Export beállítások</h3>
+        <h3 className="text-lg font-semibold">Export Settings</h3>
       </div>
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="format">Formátum</Label>
+          <Label htmlFor="format">Format</Label>
           <Select value={format} onValueChange={setFormat}>
             <SelectTrigger id="format">
               <SelectValue />
@@ -146,22 +146,22 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="quality">Minőség</Label>
+          <Label htmlFor="quality">Quality</Label>
           <Select value={quality} onValueChange={setQuality}>
             <SelectTrigger id="quality">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="low">Alacsony (720p)</SelectItem>
-              <SelectItem value="medium">Közepes (1080p)</SelectItem>
-              <SelectItem value="high">Magas (1440p)</SelectItem>
+              <SelectItem value="low">Low (720p)</SelectItem>
+              <SelectItem value="medium">Medium (1080p)</SelectItem>
+              <SelectItem value="high">High (1440p)</SelectItem>
               <SelectItem value="ultra">Ultra (4K)</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="fps">FPS (képkocka/másodperc)</Label>
+          <Label htmlFor="fps">FPS (frames per second)</Label>
           <Input
             id="fps"
             type="number"
@@ -180,11 +180,11 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
         size="lg"
       >
         <Download className="w-4 h-4" />
-        Videó exportálása
+        Export Video
       </Button>
 
       <p className="text-xs text-muted-foreground text-center">
-        A videó renderelése a böngésződben történik
+        Video rendering happens in your browser
       </p>
     </div>
   );
