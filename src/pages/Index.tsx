@@ -271,7 +271,7 @@ const Index = () => {
               
               {/* Timeline Section */}
               <div className="bg-card rounded-lg border border-border p-6">
-                <Timeline items={mediaItems} onRemove={handleRemove} onReorder={handleReorder} onDurationChange={handleDurationChange} />
+                <Timeline items={mediaItems} onRemove={handleRemove} onReorder={handleReorder} onDurationChange={handleDurationChange} location={videoLocation} />
               </div>
 
               {/* Transitions Section */}

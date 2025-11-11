@@ -18,6 +18,7 @@ interface TimelineProps {
   onRemove: (id: string) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
   onDurationChange: (id: string, duration: number) => void;
+  location?: string;
 }
 
 export const Timeline = ({
@@ -25,6 +26,7 @@ export const Timeline = ({
   onRemove,
   onReorder,
   onDurationChange,
+  location,
 }: TimelineProps) => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -61,19 +63,48 @@ export const Timeline = ({
     );
   }
 
+  const globeDuration = 3; // 3 seconds for globe animation
+  const totalItems = items.length + (location ? 1 : 0);
+  const totalDuration = items.reduce((acc, item) => acc + item.duration, 0) + (location ? globeDuration : 0);
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Clock className="w-5 h-5 text-primary" />
-          Timeline ({items.length} items)
+          Timeline ({totalItems} items)
         </h3>
         <div className="text-sm text-muted-foreground">
-          Total duration:{" "}
-          {Math.round(items.reduce((acc, item) => acc + item.duration, 0))} sec
+          Total duration: {Math.round(totalDuration)} sec
         </div>
       </div>
       <div className="space-y-2">
+        {/* Globe Animation Item */}
+        {location && (
+          <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-primary/20 to-accent/20 rounded-lg border border-primary/50">
+            <div className="w-5 h-5 flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+                <path d="M2 12h20"/>
+              </svg>
+            </div>
+            <div className="w-16 h-16 bg-gradient-to-br from-primary to-accent rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+                <path d="M2 12h20"/>
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">🌍 Location Animation</p>
+              <p className="text-xs text-muted-foreground truncate">{location}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-primary">{globeDuration} sec</span>
+            </div>
+          </div>
+        )}
         {items.map((item, index) => (
           <div
             key={item.id}

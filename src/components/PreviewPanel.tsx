@@ -692,16 +692,16 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
     }
   };
 
-  if (items.length === 0) {
+  if (items.length === 0 && (!location || !coordinates)) {
     return (
       <div className="bg-card rounded-lg border border-border flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Nincs megjeleníthető tartalom</p>
+        <p className="text-muted-foreground">No content to display</p>
       </div>
     );
   }
 
   const currentItem = items[currentIndex];
-  const progressPercentage = currentItem
+  const progressPercentage = currentItem && items.length > 0
     ? (progress / currentItem.duration) * 100
     : 0;
 
@@ -775,13 +775,14 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
           <div className="space-y-4">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>
-                {currentIndex + 1} / {items.length}
-                {currentItem?.type === "video" && currentItem.clips && currentItem.clips.length > 0 
-                  ? ` (Klip ${currentClipIndex + 1}/${currentItem.clips.length})`
-                  : ""
+                {showGlobeAnimation 
+                  ? "🌍 Location Animation" 
+                  : items.length > 0 
+                    ? `${currentIndex + 1} / ${items.length}${currentItem?.type === "video" && currentItem.clips && currentItem.clips.length > 0 ? ` (Clip ${currentClipIndex + 1}/${currentItem.clips.length})` : ""}`
+                    : "Ready"
                 }
               </span>
-              <span>{progress.toFixed(1)}s / {currentItem?.duration.toFixed(1)}s</span>
+              <span>{progress.toFixed(1)}s / {currentItem?.duration.toFixed(1) || 0}s</span>
             </div>
             
             <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
@@ -801,12 +802,12 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
                 {isPlaying ? (
                   <>
                     <Pause className="h-5 w-5" />
-                    Szünet
+                    Pause
                   </>
                 ) : (
                   <>
                     <Play className="h-5 w-5" />
-                    Lejátszás
+                    Play
                   </>
                 )}
               </Button>
@@ -819,13 +820,19 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
                 disabled={showGlobeAnimation}
               >
                 <RotateCcw className="h-5 w-5" />
-                Újra
+                Reset
               </Button>
             </div>
             
             {audioFile && (
               <div className="text-center text-sm text-muted-foreground">
-                🎵 Háttérzene: {audioFile.name}
+                🎵 Background music: {audioFile.name}
+              </div>
+            )}
+            
+            {location && coordinates && (
+              <div className="text-center text-sm text-primary font-medium">
+                🌍 Location animation will play first
               </div>
             )}
           </div>
@@ -836,28 +843,28 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
           <div className="space-y-4">
             {videoTitle && (
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Videó címe</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Video Title</h3>
                 <p className="text-lg font-semibold">{videoTitle}</p>
               </div>
             )}
             
             {videoDescription && (
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Leírás</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
                 <p className="text-sm">{videoDescription}</p>
               </div>
             )}
             
             {location && (
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Helyszín</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Location</h3>
                 <p className="text-sm">{location}</p>
               </div>
             )}
             
             {videoDate && (
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Időpont</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Date</h3>
                 <p className="text-sm">{videoDate}</p>
               </div>
             )}
