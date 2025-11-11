@@ -331,6 +331,23 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
           animate();
         }
       }
+    } else if (item.type === "titleCard") {
+      // Handle title card
+      const img = new Image();
+      const blobUrl = URL.createObjectURL(item.file);
+      blobUrlsRef.current.push(blobUrl);
+      img.src = blobUrl;
+      
+      img.onload = () => {
+        console.log('Title card loaded:', currentIndex);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+        const x = (canvas.width - img.width * scale) / 2;
+        const y = (canvas.height - img.height * scale) / 2;
+        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+      };
     } else if (item.type === "video") {
       const video = document.createElement("video");
       const blobUrl = URL.createObjectURL(item.file);
@@ -788,8 +805,14 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
         {/* Left side - Video canvas */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex-1 flex items-center justify-center bg-black rounded-lg overflow-hidden relative aspect-video">
+            <canvas
+              ref={canvasRef}
+              width={1920}
+              height={1080}
+              className="max-w-full max-h-full object-contain"
+            />
             {showGlobeAnimation && coordinates && location && (
-              <div className="absolute inset-0 z-10 w-full h-full">
+              <div className="absolute inset-0 z-20 w-full h-full pointer-events-none">
                 <GlobeAnimation
                   targetLat={coordinates.lat}
                   targetLon={coordinates.lon}
@@ -798,12 +821,6 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
                 />
               </div>
             )}
-            <canvas
-              ref={canvasRef}
-              width={1920}
-              height={1080}
-              className={`max-w-full max-h-full object-contain ${showGlobeAnimation ? 'opacity-0' : 'opacity-100'}`}
-            />
           </div>
           
           <div className="space-y-4">

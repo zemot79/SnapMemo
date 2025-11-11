@@ -58,7 +58,105 @@ const Index = () => {
     setCurrentStep(2);
     toast.success("Title saved!");
   }, []);
-  const handleImagesAdded = useCallback((files: File[]) => {
+  
+  const createTitleCard = useCallback(async (firstImage: File, title: string, description: string, date: string): Promise<MediaItem> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1920;
+      canvas.height = 1080;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error("Cannot create canvas context");
+      }
+      
+      const img = new Image();
+      img.onload = () => {
+        // Draw image on left 2/3
+        const imageWidth = canvas.width * (2/3);
+        const scale = Math.max(imageWidth / img.width, canvas.height / img.height);
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+        const x = (imageWidth - scaledWidth) / 2;
+        const y = (canvas.height - scaledHeight) / 2;
+        
+        ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+        
+        // Draw black background on right 1/3
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(imageWidth, 0, canvas.width - imageWidth, canvas.height);
+        
+        // Draw text on right side
+        const textX = imageWidth + 40;
+        const textWidth = canvas.width - imageWidth - 80;
+        
+        // Title
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 64px Inter, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        
+        const wrapText = (text: string, maxWidth: number, lineHeight: number, startY: number) => {
+          const words = text.split(' ');
+          let line = '';
+          let y = startY;
+          
+          for (let i = 0; i < words.length; i++) {
+            const testLine = line + words[i] + ' ';
+            const metrics = ctx.measureText(testLine);
+            
+            if (metrics.width > maxWidth && i > 0) {
+              ctx.fillText(line, textX, y);
+              line = words[i] + ' ';
+              y += lineHeight;
+            } else {
+              line = testLine;
+            }
+          }
+          ctx.fillText(line, textX, y);
+          return y + lineHeight;
+        };
+        
+        let currentY = 150;
+        currentY = wrapText(title, textWidth, 80, currentY);
+        
+        // Description
+        currentY += 60;
+        ctx.font = '36px Inter, sans-serif';
+        ctx.fillStyle = '#cccccc';
+        currentY = wrapText(description, textWidth, 50, currentY);
+        
+        // Date
+        currentY += 80;
+        ctx.font = '32px Inter, sans-serif';
+        ctx.fillStyle = '#999999';
+        ctx.fillText(date, textX, currentY);
+        
+        // Convert canvas to blob and create MediaItem
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], 'title-card.png', { type: 'image/png' });
+            const titleCard: MediaItem = {
+              id: 'title-card',
+              file,
+              type: 'titleCard',
+              duration: 4,
+              thumbnail: URL.createObjectURL(blob),
+              metadata: {
+                title,
+                description,
+                date,
+              },
+            };
+            resolve(titleCard);
+          }
+        }, 'image/png');
+      };
+      
+      img.src = URL.createObjectURL(firstImage);
+    });
+  }, []);
+  const handleImagesAdded = useCallback(async (files: File[]) => {
     const newItems: MediaItem[] = files.map(file => ({
       id: Math.random().toString(36).substr(2, 9),
       file,
@@ -66,13 +164,32 @@ const Index = () => {
       duration: 3,
       thumbnail: URL.createObjectURL(file)
     }));
+    
     setMediaItems(prev => {
       const combined = [...prev, ...newItems];
       // Sort by file creation time (lastModified)
-      return combined.sort((a, b) => a.file.lastModified - b.file.lastModified);
+      const sorted = combined.sort((a, b) => {
+        // Keep titleCard first if it exists
+        if (a.type === 'titleCard') return -1;
+        if (b.type === 'titleCard') return 1;
+        return a.file.lastModified - b.file.lastModified;
+      });
+      return sorted;
     });
-    toast.success(`${files.length} images added and sorted chronologically`);
-  }, []);
+    
+    // Create title card if this is the first image and we have title data
+    if (mediaItems.filter(i => i.type === 'image').length === 0 && videoTitle && files.length > 0) {
+      const titleCard = await createTitleCard(files[0], videoTitle, videoDescription, videoDate);
+      setMediaItems(prev => {
+        // Remove old title card if exists and add new one at the start
+        const withoutOldCard = prev.filter(i => i.type !== 'titleCard');
+        return [titleCard, ...withoutOldCard];
+      });
+      toast.success(`${files.length} images added with title card`);
+    } else {
+      toast.success(`${files.length} images added and sorted chronologically`);
+    }
+  }, [videoTitle, videoDescription, videoDate, mediaItems, createTitleCard]);
   const handleVideosAdded = useCallback((files: File[]) => {
     const newItems: MediaItem[] = files.map(file => ({
       id: Math.random().toString(36).substr(2, 9),
