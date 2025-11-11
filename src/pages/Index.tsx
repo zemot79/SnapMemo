@@ -134,10 +134,15 @@ const Index = () => {
     }));
   }, []);
   const handleExport = useCallback((settings: ExportSettings): number => {
-    console.log("Exportálás beállításokkal:", settings);
+    console.log("Export with settings:", settings);
 
     // Calculate total duration from all media items
-    const totalDuration = mediaItems.reduce((total, item) => total + item.duration, 0);
+    let totalDuration = mediaItems.reduce((total, item) => total + item.duration, 0);
+    
+    // Add 3 seconds for globe animation if location is set
+    if (videoLocation && videoLocation.trim() !== "") {
+      totalDuration += 3;
+    }
 
     // Start playback
     if (previewPanelRef.current) {
@@ -145,7 +150,7 @@ const Index = () => {
     }
     toast.info(`Video recording starting... (${Math.ceil(totalDuration)} sec)`);
     return totalDuration;
-  }, [mediaItems]);
+  }, [mediaItems, videoLocation]);
   const getImageCount = () => mediaItems.filter(item => item.type === "image").length;
   const getVideoCount = () => mediaItems.filter(item => item.type === "video").length;
   const canGoNext = () => {

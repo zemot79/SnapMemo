@@ -49,7 +49,12 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
   useImperativeHandle(ref, () => ({
     startPlayback: () => {
       handleReset();
-      setTimeout(() => setIsPlaying(true), 100);
+      // If there's a location with coordinates, show globe first
+      if (coordinates && location) {
+        setTimeout(() => setShowGlobeAnimation(true), 100);
+      } else {
+        setTimeout(() => setIsPlaying(true), 100);
+      }
     },
     resetPlayback: () => {
       handleReset();
@@ -62,6 +67,35 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
       // Removed auto-play, will be triggered via ref
     }
   }, []);
+
+  // Render globe placeholder on canvas when globe animation is showing
+  useEffect(() => {
+    if (!canvasRef.current || !showGlobeAnimation || !location) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    
+    // Draw a dark blue gradient background
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, '#1e3a8a');
+    gradient.addColorStop(1, '#0f172a');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw location name in center
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 72px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(location, canvas.width / 2, canvas.height / 2);
+    
+    // Draw subtitle
+    ctx.font = '36px Arial';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('📍 Location', canvas.width / 2, canvas.height / 2 + 80);
+    
+  }, [showGlobeAnimation, location]);
 
   // Geocode location when component mounts
   useEffect(() => {
@@ -625,8 +659,8 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
   }, [items]);
 
   const handlePlayPause = () => {
-    // If there's a location and globe animation hasn't been shown yet, show it
-    if (coordinates && !showGlobeAnimation && !isPlaying && currentIndex === 0 && progress === 0) {
+    // If we're at the start and have a location, show globe animation first
+    if (coordinates && location && !showGlobeAnimation && !isPlaying && currentIndex === 0 && progress === 0) {
       setShowGlobeAnimation(true);
       return;
     }
@@ -754,12 +788,12 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
         {/* Left side - Video canvas */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex-1 flex items-center justify-center bg-black rounded-lg overflow-hidden relative aspect-video">
-            {showGlobeAnimation && coordinates && (
-              <div className="absolute inset-0 z-10 w-full h-full min-h-[600px]">
+            {showGlobeAnimation && coordinates && location && (
+              <div className="absolute inset-0 z-10 w-full h-full">
                 <GlobeAnimation
                   targetLat={coordinates.lat}
                   targetLon={coordinates.lon}
-                  locationName={location || coordinates.displayName}
+                  locationName={location}
                   onComplete={handleGlobeAnimationComplete}
                 />
               </div>
@@ -768,7 +802,7 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
               ref={canvasRef}
               width={1920}
               height={1080}
-              className={`max-w-full max-h-full object-contain ${showGlobeAnimation ? 'invisible' : 'visible'}`}
+              className={`max-w-full max-h-full object-contain ${showGlobeAnimation ? 'opacity-0' : 'opacity-100'}`}
             />
           </div>
           

@@ -19,7 +19,7 @@ export interface ExportSettings {
 }
 
 export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps) => {
-  const [format, setFormat] = useState("mp4");
+  const [format, setFormat] = useState("webm");
   const [quality, setQuality] = useState("high");
   const [fps, setFps] = useState(30);
 
@@ -138,11 +138,12 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="mp4">MP4 (H.264)</SelectItem>
               <SelectItem value="webm">WebM (VP9)</SelectItem>
-              <SelectItem value="mov">MOV (ProRes)</SelectItem>
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground">
+            Browser recording only supports WebM format
+          </p>
         </div>
 
         <div className="space-y-2">
