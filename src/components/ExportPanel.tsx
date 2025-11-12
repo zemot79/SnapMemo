@@ -1,6 +1,5 @@
 import { Download, Settings } from "lucide-react";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useState } from "react";
@@ -15,13 +14,12 @@ interface ExportPanelProps {
 export interface ExportSettings {
   format: string;
   quality: string;
-  fps: number;
 }
 
 export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps) => {
   const [format, setFormat] = useState("webm");
   const [quality, setQuality] = useState("high");
-  const [fps, setFps] = useState(30);
+  const fps = 30; // Fixed at 30 FPS
 
   const handleExport = async () => {
     if (disabled) {
@@ -44,7 +42,7 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
       }
       
       // Calculate total video duration
-      const totalDuration = onExport({ format, quality, fps });
+      const totalDuration = onExport({ format, quality });
       const durationMs = totalDuration * 1000;
       
       // Start recording
@@ -77,7 +75,7 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
         const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
-        a.download = `video_${Date.now()}.webm`;
+        a.download = `video_${Date.now()}.${format}`;
         document.body.appendChild(a);
         a.click();
         
@@ -138,12 +136,12 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="webm">WebM (VP9)</SelectItem>
+              <SelectItem value="webm">WebM</SelectItem>
+              <SelectItem value="mp4">MP4</SelectItem>
+              <SelectItem value="mov">MOV</SelectItem>
+              <SelectItem value="wmv">WMV</SelectItem>
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            Browser recording only supports WebM format
-          </p>
         </div>
 
         <div className="space-y-2">
@@ -159,18 +157,6 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
               <SelectItem value="ultra">Ultra (4K)</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="fps">FPS (frames per second)</Label>
-          <Input
-            id="fps"
-            type="number"
-            value={fps}
-            onChange={(e) => setFps(Number(e.target.value))}
-            min="24"
-            max="60"
-          />
         </div>
       </div>
 
