@@ -84,16 +84,16 @@ const Index = () => {
         
         ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
         
-        // Draw black background on right 1/3
-        ctx.fillStyle = '#000000';
+        // Draw white background on right 1/3
+        ctx.fillStyle = '#fafafa';
         ctx.fillRect(imageWidth, 0, canvas.width - imageWidth, canvas.height);
         
         // Draw text on right side
         const textX = imageWidth + 40;
         const textWidth = canvas.width - imageWidth - 80;
         
-        // Title
-        ctx.fillStyle = '#ffffff';
+        // Title with gold/tan color
+        ctx.fillStyle = '#b08d62';
         ctx.font = 'bold 64px Inter, sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
@@ -125,7 +125,7 @@ const Index = () => {
         // Description
         currentY += 60;
         ctx.font = '36px Inter, sans-serif';
-        ctx.fillStyle = '#cccccc';
+        ctx.fillStyle = '#666666';
         currentY = wrapText(description, textWidth, 50, currentY);
         
         // Date
