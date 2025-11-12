@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { ImageUploader } from "@/components/ImageUploader";
 import { VideoUploader } from "@/components/VideoUploader";
 import { AudioUploader } from "@/components/AudioUploader";
@@ -491,6 +492,8 @@ const Index = () => {
             </div>}
         </main>
       </div>
+      
+      <Footer />
     </div>;
 };
 export default Index;
