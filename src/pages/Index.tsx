@@ -291,7 +291,7 @@ const Index = () => {
       <Header />
 
       <div className="container mx-auto px-6">
-        <Stepper steps={steps} currentStep={currentStep} />
+        <Stepper steps={steps} currentStep={currentStep} onStepClick={setCurrentStep} />
 
         <main className="pb-8">
           {/* Step 1: Video Title */}

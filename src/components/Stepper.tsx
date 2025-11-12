@@ -10,9 +10,10 @@ export interface Step {
 interface StepperProps {
   steps: Step[];
   currentStep: number;
+  onStepClick?: (stepId: number) => void;
 }
 
-export const Stepper = ({ steps, currentStep }: StepperProps) => {
+export const Stepper = ({ steps, currentStep, onStepClick }: StepperProps) => {
   return (
     <div className="w-full py-8">
       <div className="flex items-center justify-between relative">
@@ -32,9 +33,10 @@ export const Stepper = ({ steps, currentStep }: StepperProps) => {
           const stepNumber = index + 1;
 
           return (
-            <div
+            <button
               key={step.id}
-              className="flex flex-col items-center relative z-10"
+              onClick={() => onStepClick?.(step.id)}
+              className="flex flex-col items-center relative z-10 cursor-pointer hover:scale-105 transition-transform"
             >
               <div
                 className={cn(
@@ -66,7 +68,7 @@ export const Stepper = ({ steps, currentStep }: StepperProps) => {
                   {step.description}
                 </p>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
