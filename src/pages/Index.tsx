@@ -254,8 +254,14 @@ const Index = () => {
   const handleExport = useCallback((settings: ExportSettings): number => {
     console.log("Export with settings:", settings);
 
+    // Reorder items: title card first, then rest
+    const orderedItems = [
+      ...mediaItems.filter(item => item.type === 'titleCard'),
+      ...mediaItems.filter(item => item.type !== 'titleCard')
+    ];
+
     // Calculate total duration from all media items
-    let totalDuration = mediaItems.reduce((total, item) => total + item.duration, 0);
+    let totalDuration = orderedItems.reduce((total, item) => total + item.duration, 0);
     
     // Add 3 seconds for globe animation if location is set
     if (videoLocation && videoLocation.trim() !== "") {
@@ -444,7 +450,20 @@ const Index = () => {
               
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                  <PreviewPanel ref={previewPanelRef} items={mediaItems} audioFile={audioFiles.length > 0 ? audioFiles[0] : null} transitions={transitions} location={videoLocation} videoTitle={videoTitle} videoDescription={videoDescription} videoDate={videoDate} canvasRef={canvasRef} />
+                  <PreviewPanel 
+                    ref={previewPanelRef} 
+                    items={[
+                      ...mediaItems.filter(item => item.type === 'titleCard'),
+                      ...mediaItems.filter(item => item.type !== 'titleCard')
+                    ]} 
+                    audioFile={audioFiles.length > 0 ? audioFiles[0] : null} 
+                    transitions={transitions} 
+                    location={videoLocation} 
+                    videoTitle={videoTitle} 
+                    videoDescription={videoDescription} 
+                    videoDate={videoDate} 
+                    canvasRef={canvasRef} 
+                  />
                 </div>
                 
                 <div className="lg:col-span-1">
