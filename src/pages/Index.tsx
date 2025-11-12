@@ -4,13 +4,14 @@ import { Footer } from "@/components/Footer";
 import { ImageUploader } from "@/components/ImageUploader";
 import { VideoUploader } from "@/components/VideoUploader";
 import { AudioUploader } from "@/components/AudioUploader";
-import { Timeline, MediaItem } from "@/components/Timeline";
+import { Timeline, MediaItem, TextOverlay } from "@/components/Timeline";
 import { ImageEditor } from "@/components/ImageEditor";
 import { VideoEditor } from "@/components/VideoEditor";
 import { PreviewPanel, PreviewPanelRef } from "@/components/PreviewPanel";
 import { ExportPanel, ExportSettings } from "@/components/ExportPanel";
 import { VideoTitleStep } from "@/components/VideoTitleStep";
 import { Stepper, Step } from "@/components/Stepper";
+import { TextOverlayEditor } from "@/components/TextOverlayEditor";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
@@ -51,6 +52,7 @@ const Index = () => {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioFiles, setAudioFiles] = useState<File[]>([]);
   const [transitions, setTransitions] = useState<string[]>(["fade"]);
+  const [textOverlayItemId, setTextOverlayItemId] = useState<string | null>(null);
   const handleTitleNext = useCallback((title: string, description: string, location: string, dateFrom: string, dateTo: string) => {
     setVideoTitle(title);
     setVideoDescription(description);
@@ -252,6 +254,19 @@ const Index = () => {
       };
     }));
   }, []);
+
+  const handleKenBurnsChange = useCallback((id: string, kenBurns: { enabled: boolean; effect: "zoomIn" | "zoomOut" | "panLeft" | "panRight" }) => {
+    setMediaItems(prev => prev.map(item => item.id === id ? { ...item, kenBurns } : item));
+    toast.success(`Ken Burns ${kenBurns.enabled ? 'enabled' : 'disabled'}`);
+  }, []);
+
+  const handleTextOverlayClick = useCallback((id: string) => {
+    setTextOverlayItemId(id);
+  }, []);
+
+  const handleTextOverlaySave = useCallback((id: string, overlays: TextOverlay[]) => {
+    setMediaItems(prev => prev.map(item => item.id === id ? { ...item, textOverlays: overlays } : item));
+  }, []);
   const calculateTotalDuration = useCallback(() => {
     // Reorder items: title card first, then rest
     const orderedItems = [
@@ -393,7 +408,15 @@ const Index = () => {
               
               {/* Timeline Section */}
               <div className="bg-card rounded-lg border border-border p-6">
-                <Timeline items={mediaItems} onRemove={handleRemove} onReorder={handleReorder} onDurationChange={handleDurationChange} location={videoLocation} />
+                <Timeline 
+                  items={mediaItems} 
+                  onRemove={handleRemove} 
+                  onReorder={handleReorder} 
+                  onDurationChange={handleDurationChange}
+                  onKenBurnsChange={handleKenBurnsChange}
+                  onTextOverlayClick={handleTextOverlayClick}
+                  location={videoLocation} 
+                />
               </div>
 
               {/* Transitions Section */}
@@ -492,7 +515,21 @@ const Index = () => {
             </div>}
         </main>
       </div>
-      
+
+      {/* Text Overlay Editor Dialog */}
+      {textOverlayItemId && (() => {
+        const item = mediaItems.find(i => i.id === textOverlayItemId);
+        return item ? (
+          <TextOverlayEditor
+            itemId={item.id}
+            itemName={item.file.name}
+            overlays={item.textOverlays || []}
+            onSave={(overlays) => handleTextOverlaySave(item.id, overlays)}
+            onClose={() => setTextOverlayItemId(null)}
+          />
+        ) : null;
+      })()}
+
       <Footer />
     </div>;
 };

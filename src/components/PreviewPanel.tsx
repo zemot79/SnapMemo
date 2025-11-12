@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import { Play, Pause, RotateCcw } from "lucide-react";
 import { Button } from "./ui/button";
-import { MediaItem } from "./Timeline";
+import { MediaItem, TextOverlay } from "./Timeline";
 import { GlobeAnimation } from "./GlobeAnimation";
 import { geocodeLocation, Coordinates } from "@/lib/geocoding";
 
@@ -287,32 +287,72 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
           ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
         };
         
+        // Draw text overlays helper function
+        const drawTextOverlays = () => {
+          if (!item.textOverlays || item.textOverlays.length === 0) return;
+          
+          item.textOverlays.forEach(overlay => {
+            ctx.save();
+            
+            // Calculate position
+            const x = (overlay.x / 100) * canvas.width;
+            const y = (overlay.y / 100) * canvas.height;
+            
+            // Set font
+            ctx.font = `${overlay.fontSize}px ${overlay.fontFamily}`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Draw background
+            if (overlay.backgroundColor) {
+              const metrics = ctx.measureText(overlay.text);
+              const padding = 20;
+              const bgHeight = overlay.fontSize + padding * 2;
+              const bgWidth = metrics.width + padding * 2;
+              
+              ctx.globalAlpha = overlay.opacity;
+              ctx.fillStyle = overlay.backgroundColor;
+              ctx.fillRect(x - bgWidth / 2, y - bgHeight / 2, bgWidth, bgHeight);
+            }
+            
+            // Draw text
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = overlay.color;
+            ctx.fillText(overlay.text, x, y);
+            
+            ctx.restore();
+          });
+        };
+        
         // Always draw the image first
         drawStatic();
+        drawTextOverlays();
+        
+        // Check for Ken Burns or focal point animation
+        const kenBurns = item.kenBurns;
+        const shouldAnimateKenBurns = kenBurns?.enabled && !focalPoint;
         
         if (focalPoint) {
           console.log('Starting focal point animation:', focalPoint);
-          // Animate zoom to focal point
+          // Animate zoom to focal point (existing logic)
           const startTime = Date.now();
-          const animationDuration = item.duration * 1000; // Convert to ms
+          const animationDuration = item.duration * 1000;
           const startScale = 1;
           const endScale = 1.5;
           
           const animate = () => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / animationDuration, 1);
-            const easeProgress = 1 - Math.pow(1 - progress, 3); // Ease out cubic
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
             
             const currentScale = startScale + (endScale - startScale) * easeProgress;
             
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Calculate base position
             const baseScale = Math.min(canvas.width / img.width, canvas.height / img.height);
             const scaledWidth = img.width * baseScale * currentScale;
             const scaledHeight = img.height * baseScale * currentScale;
             
-            // Interpolate position towards focal point
             const targetX = canvas.width / 2 - (focalPoint.x * img.width * baseScale * currentScale);
             const targetY = canvas.height / 2 - (focalPoint.y * img.height * baseScale * currentScale);
             const startX = (canvas.width - img.width * baseScale) / 2;
@@ -322,6 +362,56 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
             const y = startY + (targetY - startY) * easeProgress;
             
             ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+            drawTextOverlays();
+            
+            if (progress < 1) {
+              imageAnimationRef.current = requestAnimationFrame(animate);
+            }
+          };
+          
+          animate();
+        } else if (shouldAnimateKenBurns) {
+          console.log('Starting Ken Burns animation:', kenBurns.effect);
+          const startTime = Date.now();
+          const animationDuration = item.duration * 1000;
+          
+          const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / animationDuration, 1);
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const baseScale = Math.min(canvas.width / img.width, canvas.height / img.height);
+            
+            let scale = baseScale;
+            let offsetX = 0;
+            let offsetY = 0;
+            
+            switch (kenBurns.effect) {
+              case "zoomIn":
+                scale = baseScale * (1 + progress * 0.3);
+                break;
+              case "zoomOut":
+                scale = baseScale * (1.3 - progress * 0.3);
+                break;
+              case "panLeft":
+                offsetX = -(progress * 200);
+                break;
+              case "panRight":
+                offsetX = progress * 200;
+                break;
+            }
+            
+            const scaledWidth = img.width * scale;
+            const scaledHeight = img.height * scale;
+            const x = (canvas.width - scaledWidth) / 2 + offsetX;
+            const y = (canvas.height - scaledHeight) / 2 + offsetY;
+            
+            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+            drawTextOverlays();
             
             if (progress < 1) {
               imageAnimationRef.current = requestAnimationFrame(animate);
@@ -347,6 +437,37 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
         const x = (canvas.width - img.width * scale) / 2;
         const y = (canvas.height - img.height * scale) / 2;
         ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+        
+        // Draw text overlays
+        if (item.textOverlays && item.textOverlays.length > 0) {
+          item.textOverlays.forEach(overlay => {
+            ctx.save();
+            
+            const overlayX = (overlay.x / 100) * canvas.width;
+            const overlayY = (overlay.y / 100) * canvas.height;
+            
+            ctx.font = `${overlay.fontSize}px ${overlay.fontFamily}`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            if (overlay.backgroundColor) {
+              const metrics = ctx.measureText(overlay.text);
+              const padding = 20;
+              const bgHeight = overlay.fontSize + padding * 2;
+              const bgWidth = metrics.width + padding * 2;
+              
+              ctx.globalAlpha = overlay.opacity;
+              ctx.fillStyle = overlay.backgroundColor;
+              ctx.fillRect(overlayX - bgWidth / 2, overlayY - bgHeight / 2, bgWidth, bgHeight);
+            }
+            
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = overlay.color;
+            ctx.fillText(overlay.text, overlayX, overlayY);
+            
+            ctx.restore();
+          });
+        }
       };
     } else if (item.type === "video") {
       const video = document.createElement("video");
@@ -373,6 +494,37 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
           video.videoWidth * scale,
           video.videoHeight * scale
         );
+        
+        // Draw text overlays
+        if (item.textOverlays && item.textOverlays.length > 0) {
+          item.textOverlays.forEach(overlay => {
+            ctx.save();
+            
+            const overlayX = (overlay.x / 100) * canvas.width;
+            const overlayY = (overlay.y / 100) * canvas.height;
+            
+            ctx.font = `${overlay.fontSize}px ${overlay.fontFamily}`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            if (overlay.backgroundColor) {
+              const metrics = ctx.measureText(overlay.text);
+              const padding = 20;
+              const bgHeight = overlay.fontSize + padding * 2;
+              const bgWidth = metrics.width + padding * 2;
+              
+              ctx.globalAlpha = overlay.opacity;
+              ctx.fillStyle = overlay.backgroundColor;
+              ctx.fillRect(overlayX - bgWidth / 2, overlayY - bgHeight / 2, bgWidth, bgHeight);
+            }
+            
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = overlay.color;
+            ctx.fillText(overlay.text, overlayX, overlayY);
+            
+            ctx.restore();
+          });
+        }
         
         animationFrameRef.current = requestAnimationFrame(drawVideoFrame);
       };

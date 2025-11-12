@@ -1,7 +1,22 @@
-import { GripVertical, X, Clock } from "lucide-react";
+import { GripVertical, X, Clock, Zap, Type } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Switch } from "./ui/switch";
+import { Label } from "./ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useState } from "react";
+
+export interface TextOverlay {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  fontFamily: string;
+  color: string;
+  backgroundColor?: string;
+  opacity: number;
+}
 
 export interface MediaItem {
   id: string;
@@ -16,6 +31,11 @@ export interface MediaItem {
     description?: string;
     date?: string;
   };
+  kenBurns?: {
+    enabled: boolean;
+    effect: "zoomIn" | "zoomOut" | "panLeft" | "panRight";
+  };
+  textOverlays?: TextOverlay[];
 }
 
 interface TimelineProps {
@@ -23,6 +43,8 @@ interface TimelineProps {
   onRemove: (id: string) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
   onDurationChange: (id: string, duration: number) => void;
+  onKenBurnsChange?: (id: string, kenBurns: { enabled: boolean; effect: "zoomIn" | "zoomOut" | "panLeft" | "panRight" }) => void;
+  onTextOverlayClick?: (id: string) => void;
   location?: string;
 }
 
@@ -31,6 +53,8 @@ export const Timeline = ({
   onRemove,
   onReorder,
   onDurationChange,
+  onKenBurnsChange,
+  onTextOverlayClick,
   location,
 }: TimelineProps) => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -170,11 +194,69 @@ export const Timeline = ({
                 />
               )}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{item.file.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {item.type === "image" ? "Image" : item.type === "video" ? "Video" : "Title Card"}
-              </p>
+            <div className="flex-1 min-w-0 space-y-2">
+              <div>
+                <p className="text-sm font-medium truncate">{item.file.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {item.type === "image" ? "Image" : item.type === "video" ? "Video" : "Title Card"}
+                </p>
+              </div>
+              
+              {/* Ken Burns Effect for Images */}
+              {item.type === "image" && onKenBurnsChange && (
+                <div className="flex items-center gap-3 pt-1 border-t border-border/50">
+                  <Zap className="w-3.5 h-3.5 text-tertiary" />
+                  <div className="flex items-center gap-2 flex-1">
+                    <Switch
+                      id={`kenburns-${item.id}`}
+                      checked={item.kenBurns?.enabled || false}
+                      onCheckedChange={(checked) =>
+                        onKenBurnsChange(item.id, {
+                          enabled: checked,
+                          effect: item.kenBurns?.effect || "zoomIn"
+                        })
+                      }
+                    />
+                    <Label htmlFor={`kenburns-${item.id}`} className="text-xs cursor-pointer">
+                      Ken Burns
+                    </Label>
+                  </div>
+                  {item.kenBurns?.enabled && (
+                    <Select
+                      value={item.kenBurns.effect}
+                      onValueChange={(value: any) =>
+                        onKenBurnsChange(item.id, {
+                          enabled: true,
+                          effect: value
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-7 w-28 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="zoomIn">Zoom In</SelectItem>
+                        <SelectItem value="zoomOut">Zoom Out</SelectItem>
+                        <SelectItem value="panLeft">Pan Left</SelectItem>
+                        <SelectItem value="panRight">Pan Right</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              )}
+              
+              {/* Text Overlay Button */}
+              {onTextOverlayClick && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onTextOverlayClick(item.id)}
+                  className="h-7 text-xs gap-1.5"
+                >
+                  <Type className="w-3.5 h-3.5" />
+                  Text ({item.textOverlays?.length || 0})
+                </Button>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Input
