@@ -79,10 +79,10 @@ export const Header = () => {
               <NavigationMenuItem>
                 <Link to="/pricing">
                   <NavigationMenuLink
-                    className="px-6 py-3 text-sm font-bold uppercase tracking-wider bg-gradient-to-r from-primary/20 to-accent/20 hover:from-primary/30 hover:to-accent/30 transition-all inline-flex items-center gap-2 relative group"
+                    className="px-6 py-3 text-sm font-bold uppercase tracking-wider bg-gradient-to-r from-tertiary/20 to-tertiary/30 hover:from-tertiary/30 hover:to-tertiary/40 transition-all inline-flex items-center gap-2 relative group"
                   >
-                    <Crown className="w-4 h-4 text-primary" />
-                    <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                    <Crown className="w-4 h-4 text-tertiary" />
+                    <span className="text-tertiary">
                       Go Premium
                     </span>
                     <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0 h-5">

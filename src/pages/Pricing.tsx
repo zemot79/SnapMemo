@@ -97,7 +97,7 @@ const Pricing = () => {
       <div className="container mx-auto px-6 py-12">
         {/* Hero Section */}
         <div className="text-center space-y-4 mb-16">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-tertiary to-tertiary/70 bg-clip-text text-transparent">
             Simple, Transparent Pricing
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -163,17 +163,17 @@ const Pricing = () => {
 
           {/* Premium Plan */}
           <Card className="border-2 border-primary relative overflow-hidden">
-            <div className="absolute top-0 right-0 bg-gradient-to-l from-primary to-accent text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">
+            <div className="absolute top-0 right-0 bg-tertiary text-tertiary-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">
               POPULAR
             </div>
             <CardHeader>
               <div className="flex items-center gap-2 mb-2">
-                <Crown className="w-5 h-5 text-primary" />
+                <Crown className="w-5 h-5 text-tertiary" />
                 <CardTitle className="text-2xl">Premium</CardTitle>
               </div>
               <CardDescription>For serious content creators</CardDescription>
               <div className="mt-4">
-                <span className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                <span className="text-4xl font-bold text-tertiary">
                   $1
                 </span>
                 <span className="text-muted-foreground">/month</span>
@@ -220,7 +220,7 @@ const Pricing = () => {
               </div>
             </CardContent>
             <CardFooter>
-              <Button className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90">
+              <Button className="w-full bg-tertiary hover:bg-tertiary/90 text-tertiary-foreground">
                 <Crown className="w-4 h-4 mr-2" />
                 Upgrade to Premium
               </Button>
@@ -240,10 +240,10 @@ const Pricing = () => {
                       <th className="text-left p-4 font-semibold">Feature</th>
                       <th className="text-center p-4 font-semibold">Free</th>
                       <th className="text-center p-4 font-semibold bg-primary/5">
-                        <div className="flex items-center justify-center gap-2">
-                          <Crown className="w-4 h-4 text-primary" />
-                          Premium
-                        </div>
+                      <div className="flex items-center justify-center gap-2">
+                        <Crown className="w-4 h-4 text-tertiary" />
+                        Premium
+                      </div>
                       </th>
                     </tr>
                   </thead>
@@ -286,13 +286,13 @@ const Pricing = () => {
         <div className="max-w-5xl mx-auto mb-20">
           <h2 className="text-3xl font-bold text-center mb-12">Why Choose Premium?</h2>
           <div className="grid md:grid-cols-3 gap-8">
-            <Card>
-              <CardHeader>
-                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-                  <Sparkles className="w-6 h-6 text-primary" />
-                </div>
-                <CardTitle>Professional Quality</CardTitle>
-              </CardHeader>
+          <Card>
+            <CardHeader>
+              <div className="w-12 h-12 bg-tertiary/10 rounded-lg flex items-center justify-center mb-4">
+                <Sparkles className="w-6 h-6 text-tertiary" />
+              </div>
+              <CardTitle>Professional Quality</CardTitle>
+            </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
                   Export in stunning 4K Ultra HD without watermarks. Perfect for social media, YouTube, and professional presentations.
@@ -300,13 +300,13 @@ const Pricing = () => {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-                  <Clock className="w-6 h-6 text-primary" />
-                </div>
-                <CardTitle>Save Time</CardTitle>
-              </CardHeader>
+          <Card>
+            <CardHeader>
+              <div className="w-12 h-12 bg-tertiary/10 rounded-lg flex items-center justify-center mb-4">
+                <Clock className="w-6 h-6 text-tertiary" />
+              </div>
+              <CardTitle>Save Time</CardTitle>
+            </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
                   Priority processing means your videos export faster. No waiting in queues, get your content ready to share instantly.
@@ -314,13 +314,13 @@ const Pricing = () => {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-                  <HardDrive className="w-6 h-6 text-primary" />
-                </div>
-                <CardTitle>Unlimited Creativity</CardTitle>
-              </CardHeader>
+          <Card>
+            <CardHeader>
+              <div className="w-12 h-12 bg-tertiary/10 rounded-lg flex items-center justify-center mb-4">
+                <HardDrive className="w-6 h-6 text-tertiary" />
+              </div>
+              <CardTitle>Unlimited Creativity</CardTitle>
+            </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
                   No limits on video length or number of projects. Access premium transitions and 100+ royalty-free music tracks.
@@ -363,7 +363,7 @@ const Pricing = () => {
                 Start Free
               </Button>
             </Link>
-            <Button size="lg" className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
+            <Button size="lg" className="bg-tertiary hover:bg-tertiary/90 text-tertiary-foreground">
               <Crown className="w-4 h-4 mr-2" />
               Go Premium for $1/mo
             </Button>

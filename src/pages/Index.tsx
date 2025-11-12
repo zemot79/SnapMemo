@@ -317,7 +317,7 @@ const Index = () => {
                 <p className="text-muted-foreground">
                   Add images and mark the main focal point
                 </p>
-                {getImageCount() > 0 && <p className="text-sm text-primary font-medium">
+                {getImageCount() > 0 && <p className="text-sm text-tertiary font-medium">
                     {getImageCount()} images added
                   </p>}
               </div>
@@ -349,7 +349,7 @@ const Index = () => {
                 <p className="text-muted-foreground">
                   Add videos and select the important clips
                 </p>
-                {getVideoCount() > 0 && <p className="text-sm text-accent font-medium">
+                {getVideoCount() > 0 && <p className="text-sm text-tertiary font-medium">
                     {getVideoCount()} videos added
                   </p>}
               </div>
@@ -382,10 +382,10 @@ const Index = () => {
                   Reorder elements and set durations
                 </p>
                 <div className="flex gap-4 justify-center text-sm">
-                  <span className="text-primary font-medium">
+                  <span className="text-tertiary font-medium">
                     {getImageCount()} images
                   </span>
-                  <span className="text-accent font-medium">
+                  <span className="text-tertiary font-medium">
                     {getVideoCount()} videos
                   </span>
                 </div>
@@ -400,8 +400,8 @@ const Index = () => {
               <div className="bg-card rounded-lg border border-border p-6">
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" /></svg>
+                    <div className="p-2 bg-tertiary/10 rounded-lg">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-tertiary"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" /></svg>
                     </div>
                     <h3 className="text-lg font-semibold">Transitions</h3>
                   </div>
@@ -431,7 +431,7 @@ const Index = () => {
                         <input type="checkbox" id={`transition-${transition.id}`} checked={transitions.includes(transition.id)} onChange={() => {
                     const newTransitions = transitions.includes(transition.id) ? transitions.filter(t => t !== transition.id) : [...transitions, transition.id];
                     setTransitions(newTransitions);
-                  }} className="h-4 w-4 rounded border-border text-primary focus:ring-primary" />
+                  }} className="h-4 w-4 rounded border-border text-tertiary focus:ring-tertiary" />
                         <label htmlFor={`transition-${transition.id}`} className="text-sm font-medium leading-none cursor-pointer flex-1">
                           {transition.name}
                         </label>
