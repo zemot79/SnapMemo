@@ -18,14 +18,16 @@ export const Header = () => {
       {/* Main Header */}
       <div className="container mx-auto px-6 py-4 border-b border-border">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <img src={logo} alt="SnapMemo Logo" className="w-16 h-16 object-contain" />
             <h1 className="text-2xl font-bold font-display text-foreground">SnapMemo</h1>
-          </div>
+          </Link>
           
-          <Button variant="default" size="sm" className="uppercase tracking-wider">
-            Create Video
-          </Button>
+          <Link to="/">
+            <Button variant="default" size="sm" className="uppercase tracking-wider">
+              Create Video
+            </Button>
+          </Link>
         </div>
       </div>
 
