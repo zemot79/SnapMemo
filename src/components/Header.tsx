@@ -1,4 +1,4 @@
-import { Film, Share2, User, Info, MessageCircle } from "lucide-react";
+import { Share2, User, Info, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   NavigationMenu,
@@ -8,6 +8,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import logo from "@/assets/logo.png";
 
 export const Header = () => {
   return (
@@ -16,9 +17,7 @@ export const Header = () => {
       <div className="container mx-auto px-6 py-4 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary rounded">
-              <Film className="w-6 h-6 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="SnapMemo Logo" className="w-16 h-16 object-contain" />
             <h1 className="text-2xl font-bold font-display text-foreground">SnapMemo</h1>
           </div>
           
