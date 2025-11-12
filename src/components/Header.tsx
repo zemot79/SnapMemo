@@ -1,5 +1,6 @@
-import { Share2, User, Info, MessageCircle } from "lucide-react";
+import { Share2, User, Info, MessageCircle, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -69,6 +70,21 @@ export const Header = () => {
                 >
                   <Share2 className="w-4 h-4" />
                   Share
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+              
+              <NavigationMenuItem>
+                <NavigationMenuLink
+                  href="#"
+                  className="px-6 py-3 text-sm font-bold uppercase tracking-wider bg-gradient-to-r from-primary/20 to-accent/20 hover:from-primary/30 hover:to-accent/30 transition-all inline-flex items-center gap-2 relative group"
+                >
+                  <Crown className="w-4 h-4 text-primary" />
+                  <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                    Go Premium
+                  </span>
+                  <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0 h-5">
+                    $1/mo
+                  </Badge>
                 </NavigationMenuLink>
               </NavigationMenuItem>
               
