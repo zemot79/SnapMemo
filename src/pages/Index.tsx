@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { Header } from "@/components/Header";
 import { ImageUploader } from "@/components/ImageUploader";
 import { VideoUploader } from "@/components/VideoUploader";
 import { AudioUploader } from "@/components/AudioUploader";
@@ -10,7 +11,7 @@ import { ExportPanel, ExportSettings } from "@/components/ExportPanel";
 import { VideoTitleStep } from "@/components/VideoTitleStep";
 import { Stepper, Step } from "@/components/Stepper";
 import { Button } from "@/components/ui/button";
-import { Film, ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 const steps: Step[] = [{
   id: 1,
@@ -287,21 +288,7 @@ const Index = () => {
     }
   };
   return <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/50 backdrop-blur sticky top-0 z-10">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-primary to-accent rounded-lg">
-              <Film className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">SnapMemo</h1>
-              {videoTitle && <p className="text-sm text-muted-foreground">
-                  Project: {videoTitle}
-                </p>}
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <div className="container mx-auto px-6">
         <Stepper steps={steps} currentStep={currentStep} />
