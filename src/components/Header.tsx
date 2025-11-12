@@ -12,8 +12,24 @@ import {
 export const Header = () => {
   return (
     <header className="bg-background border-b border-border sticky top-0 z-50">
-      {/* Top Navigation Bar */}
-      <div className="bg-muted/30 border-b border-border">
+      {/* Main Header */}
+      <div className="container mx-auto px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary rounded">
+              <Film className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <h1 className="text-2xl font-bold font-display text-foreground">SnapMemo</h1>
+          </div>
+          
+          <Button variant="default" size="sm" className="uppercase tracking-wider">
+            Create Video
+          </Button>
+        </div>
+      </div>
+
+      {/* Navigation Bar */}
+      <div className="bg-muted/30">
         <div className="container mx-auto px-6">
           <NavigationMenu className="max-w-full justify-between py-0">
             <NavigationMenuList className="gap-0">
@@ -82,22 +98,6 @@ export const Header = () => {
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
-        </div>
-      </div>
-
-      {/* Main Header */}
-      <div className="container mx-auto px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary rounded">
-              <Film className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <h1 className="text-2xl font-bold font-display text-foreground">SnapMemo</h1>
-          </div>
-          
-          <Button variant="default" size="sm" className="uppercase tracking-wider">
-            Create Video
-          </Button>
         </div>
       </div>
     </header>
