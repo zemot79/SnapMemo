@@ -251,9 +251,7 @@ const Index = () => {
       };
     }));
   }, []);
-  const handleExport = useCallback((settings: ExportSettings): number => {
-    console.log("Export with settings:", settings);
-
+  const calculateTotalDuration = useCallback(() => {
     // Reorder items: title card first, then rest
     const orderedItems = [
       ...mediaItems.filter(item => item.type === 'titleCard'),
@@ -268,13 +266,21 @@ const Index = () => {
       totalDuration += 3;
     }
 
+    return totalDuration;
+  }, [mediaItems, videoLocation]);
+
+  const handleExport = useCallback((settings: ExportSettings): number => {
+    console.log("Export with settings:", settings);
+
+    const totalDuration = calculateTotalDuration();
+
     // Start playback
     if (previewPanelRef.current) {
       previewPanelRef.current.startPlayback();
     }
     toast.info(`Video recording starting... (${Math.ceil(totalDuration)} sec)`);
     return totalDuration;
-  }, [mediaItems, videoLocation]);
+  }, [calculateTotalDuration]);
   const getImageCount = () => mediaItems.filter(item => item.type === "image").length;
   const getVideoCount = () => mediaItems.filter(item => item.type === "video").length;
   const canGoNext = () => {
@@ -467,7 +473,7 @@ const Index = () => {
                 </div>
                 
                 <div className="lg:col-span-1">
-                  <ExportPanel onExport={handleExport} disabled={mediaItems.length === 0} canvasRef={canvasRef} />
+                  <ExportPanel onExport={handleExport} disabled={mediaItems.length === 0} canvasRef={canvasRef} totalDuration={calculateTotalDuration()} />
                 </div>
               </div>
             </div>}

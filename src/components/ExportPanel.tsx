@@ -2,6 +2,7 @@ import { Download, Settings } from "lucide-react";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Progress } from "./ui/progress";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -9,6 +10,7 @@ interface ExportPanelProps {
   onExport: (settings: ExportSettings) => number;
   disabled: boolean;
   canvasRef?: React.RefObject<HTMLCanvasElement>;
+  totalDuration?: number;
 }
 
 export interface ExportSettings {
@@ -16,9 +18,11 @@ export interface ExportSettings {
   quality: string;
 }
 
-export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps) => {
+export const ExportPanel = ({ onExport, disabled, canvasRef, totalDuration = 0 }: ExportPanelProps) => {
   const [format, setFormat] = useState("webm");
   const [quality, setQuality] = useState("high");
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingProgress, setRecordingProgress] = useState(0);
   const fps = 30; // Fixed at 30 FPS
 
   const handleExport = async () => {
@@ -44,6 +48,9 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
       // Calculate total video duration
       const totalDuration = onExport({ format, quality });
       const durationMs = totalDuration * 1000;
+      
+      setIsRecording(true);
+      setRecordingProgress(0);
       
       // Start recording
       const stream = canvas.captureStream(fps);
@@ -85,6 +92,8 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
         }, 100);
         
         stream.getTracks().forEach(track => track.stop());
+        setIsRecording(false);
+        setRecordingProgress(0);
         toast.success("Video downloaded!");
       };
       
@@ -92,14 +101,25 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
         console.error('Recorder error:', e);
         toast.error("Error during recording");
         stream.getTracks().forEach(track => track.stop());
+        setIsRecording(false);
+        setRecordingProgress(0);
       };
       
       // Start recording
       recorder.start(100);
-      toast.info(`Recording in progress... ${Math.ceil(totalDuration)} seconds`);
+      toast.info(`Recording started... ${Math.ceil(totalDuration)} seconds`);
+      
+      // Update progress
+      const progressInterval = setInterval(() => {
+        setRecordingProgress((prev) => {
+          const newProgress = prev + (100 / (durationMs / 100));
+          return Math.min(newProgress, 100);
+        });
+      }, 100);
       
       // Stop after total duration
       setTimeout(() => {
+        clearInterval(progressInterval);
         if (recorder.state === 'recording') {
           recorder.stop();
         }
@@ -108,6 +128,8 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
     } catch (error) {
       console.error("Export error:", error);
       toast.error("Error during export");
+      setIsRecording(false);
+      setRecordingProgress(0);
     }
   };
   
@@ -119,6 +141,13 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
       case 'ultra': return 20000000;
       default: return 5000000;
     }
+  };
+  
+  const getEstimatedSize = (qualityLevel: string): string => {
+    if (totalDuration === 0) return "~";
+    const bitrate = getBitrate(qualityLevel);
+    const sizeInMB = (bitrate * totalDuration) / (8 * 1024 * 1024);
+    return `~${sizeInMB.toFixed(1)} MB`;
   };
 
   return (
@@ -151,23 +180,53 @@ export const ExportPanel = ({ onExport, disabled, canvasRef }: ExportPanelProps)
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="low">Low (720p)</SelectItem>
-              <SelectItem value="medium">Medium (1080p)</SelectItem>
-              <SelectItem value="high">High (1440p)</SelectItem>
-              <SelectItem value="ultra">Ultra (4K)</SelectItem>
+              <SelectItem value="low">
+                <div className="flex justify-between items-center w-full gap-4">
+                  <span>Low (720p)</span>
+                  <span className="text-xs text-muted-foreground">{getEstimatedSize('low')}</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="medium">
+                <div className="flex justify-between items-center w-full gap-4">
+                  <span>Medium (1080p)</span>
+                  <span className="text-xs text-muted-foreground">{getEstimatedSize('medium')}</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="high">
+                <div className="flex justify-between items-center w-full gap-4">
+                  <span>High (1440p)</span>
+                  <span className="text-xs text-muted-foreground">{getEstimatedSize('high')}</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="ultra">
+                <div className="flex justify-between items-center w-full gap-4">
+                  <span>Ultra (4K)</span>
+                  <span className="text-xs text-muted-foreground">{getEstimatedSize('ultra')}</span>
+                </div>
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
+      {isRecording && (
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Recording...</span>
+            <span className="font-medium">{Math.round(recordingProgress)}%</span>
+          </div>
+          <Progress value={recordingProgress} />
+        </div>
+      )}
+
       <Button
         onClick={handleExport}
-        disabled={disabled}
+        disabled={disabled || isRecording}
         className="w-full gap-2"
         size="lg"
       >
         <Download className="w-4 h-4" />
-        Export Video
+        {isRecording ? "Recording..." : "Export Video"}
       </Button>
 
       <p className="text-xs text-muted-foreground text-center">
