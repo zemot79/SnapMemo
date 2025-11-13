@@ -194,12 +194,72 @@ const Index = () => {
       toast.success(`${files.length} images added and sorted chronologically`);
     }
   }, [videoTitle, videoDescription, videoDate, mediaItems, createTitleCard]);
+  const validateVideo = (file: File): { valid: boolean; error?: string } => {
+    // Supported formats
+    const supportedFormats = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
+    const supportedExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi'];
+    
+    // Check file type
+    const hasValidMimeType = supportedFormats.includes(file.type);
+    const hasValidExtension = supportedExtensions.some(ext => 
+      file.name.toLowerCase().endsWith(ext)
+    );
+    
+    if (!hasValidMimeType && !hasValidExtension) {
+      return {
+        valid: false,
+        error: `Unsupported format: ${file.name}. Please use MP4, WebM, MOV, or AVI.`
+      };
+    }
+    
+    // Check file size (max 500MB)
+    const maxSize = 500 * 1024 * 1024; // 500MB in bytes
+    if (file.size > maxSize) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      return {
+        valid: false,
+        error: `File too large: ${file.name} (${sizeMB}MB). Maximum size is 500MB.`
+      };
+    }
+    
+    // Check minimum file size (at least 1KB to avoid empty files)
+    if (file.size < 1024) {
+      return {
+        valid: false,
+        error: `File too small or corrupted: ${file.name}`
+      };
+    }
+    
+    return { valid: true };
+  };
+
   const handleVideosAdded = useCallback(async (files: File[]) => {
-    const loadingToast = toast.loading(`Loading ${files.length} video${files.length > 1 ? 's' : ''}...`);
+    // Validate all files first
+    const validationResults = files.map(file => ({
+      file,
+      validation: validateVideo(file)
+    }));
+    
+    const invalidFiles = validationResults.filter(r => !r.validation.valid);
+    const validFiles = validationResults.filter(r => r.validation.valid).map(r => r.file);
+    
+    // Show error messages for invalid files
+    if (invalidFiles.length > 0) {
+      invalidFiles.forEach(({ validation }) => {
+        toast.error(validation.error || 'Invalid file');
+      });
+    }
+    
+    // If no valid files, stop here
+    if (validFiles.length === 0) {
+      return;
+    }
+    
+    const loadingToast = toast.loading(`Loading ${validFiles.length} video${validFiles.length > 1 ? 's' : ''}...`);
     
     try {
       const newItems: MediaItem[] = await Promise.all(
-        files.map(file => 
+        validFiles.map(file =>
           new Promise<MediaItem>((resolve, reject) => {
             const video = document.createElement('video');
             video.preload = 'metadata';
@@ -259,7 +319,12 @@ const Index = () => {
       });
       
       toast.dismiss(loadingToast);
-      toast.success(`${files.length} video${files.length > 1 ? 's' : ''} added and sorted chronologically`);
+      
+      let successMessage = `${validFiles.length} video${validFiles.length > 1 ? 's' : ''} added`;
+      if (invalidFiles.length > 0) {
+        successMessage += ` (${invalidFiles.length} skipped due to errors)`;
+      }
+      toast.success(successMessage);
     } catch (error) {
       toast.dismiss(loadingToast);
       toast.error("Error loading videos");

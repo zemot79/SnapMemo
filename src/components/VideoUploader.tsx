@@ -65,7 +65,10 @@ export const VideoUploader = ({ onFilesAdded }: VideoUploaderProps) => {
               Drag videos here or click to browse
             </p>
             <p className="text-sm text-muted-foreground">
-              Supported formats: MP4, WebM, MOV, AVI
+              Supported formats: MP4, WebM, MOV, AVI, OGG
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Maximum size: 500MB per video
             </p>
           </div>
         </div>
