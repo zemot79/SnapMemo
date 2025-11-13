@@ -272,11 +272,8 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
       }
       
       function renderImage(img: HTMLImageElement) {
-        // NOW cancel the previous image animation before starting new one
-        if (imageAnimationRef.current) {
-          cancelAnimationFrame(imageAnimationRef.current);
-          imageAnimationRef.current = null;
-        }
+        // Don't cancel previous animation here - just let new one overwrite it
+        // This prevents black screen flashes between images
         
         const focalPoint = item.focalPoint;
         
@@ -359,6 +356,11 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
           isRenderingRef.current = true;
           
           const animate = () => {
+            // Cancel any previous animation from old image first
+            if (imageAnimationRef.current) {
+              cancelAnimationFrame(imageAnimationRef.current);
+            }
+            
             try {
               const elapsed = Date.now() - startTime;
               const progress = Math.min(elapsed / animationDuration, 1);
@@ -385,7 +387,8 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
               ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
               drawTextOverlays();
               
-              // Keep rendering continuously - will be cancelled when item changes
+              // ALWAYS keep rendering - even after animation completes
+              // This prevents black screens between transitions
               imageAnimationRef.current = requestAnimationFrame(animate);
             } catch (error) {
               console.error('❌ Focal point animation error:', error);
@@ -405,6 +408,11 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
           isRenderingRef.current = true;
           
           const animate = () => {
+            // Cancel any previous animation from old image first
+            if (imageAnimationRef.current) {
+              cancelAnimationFrame(imageAnimationRef.current);
+            }
+            
             try {
               const elapsed = Date.now() - startTime;
               const progress = Math.min(elapsed / animationDuration, 1);
@@ -460,6 +468,11 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
           setErrorMessage("");
           
           const renderStatic = () => {
+            // Cancel any previous animation from old image first
+            if (imageAnimationRef.current) {
+              cancelAnimationFrame(imageAnimationRef.current);
+            }
+            
             try {
               drawStatic();
               drawTextOverlays();
@@ -483,50 +496,59 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
       img.onload = () => {
         console.log('Title card loaded:', currentIndex);
         
-        // Cancel any previous image animation
-        if (imageAnimationRef.current) {
-          cancelAnimationFrame(imageAnimationRef.current);
-          imageAnimationRef.current = null;
-        }
+        // Don't cancel here - let the render loop handle it
         
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
-        const x = (canvas.width - img.width * scale) / 2;
-        const y = (canvas.height - img.height * scale) / 2;
-        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-        
-        // Draw text overlays
-        if (item.textOverlays && item.textOverlays.length > 0) {
-          item.textOverlays.forEach(overlay => {
-            ctx.save();
-            
-            const overlayX = (overlay.x / 100) * canvas.width;
-            const overlayY = (overlay.y / 100) * canvas.height;
-            
-            ctx.font = `${overlay.fontSize}px ${overlay.fontFamily}`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            
-            if (overlay.backgroundColor) {
-              const metrics = ctx.measureText(overlay.text);
-              const padding = 20;
-              const bgHeight = overlay.fontSize + padding * 2;
-              const bgWidth = metrics.width + padding * 2;
+        // Set up continuous rendering for title card
+        const renderTitleCard = () => {
+          // Cancel any previous animation from old image first
+          if (imageAnimationRef.current) {
+            cancelAnimationFrame(imageAnimationRef.current);
+          }
+          
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+          const x = (canvas.width - img.width * scale) / 2;
+          const y = (canvas.height - img.height * scale) / 2;
+          ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+          
+          // Draw text overlays
+          if (item.textOverlays && item.textOverlays.length > 0) {
+            item.textOverlays.forEach(overlay => {
+              ctx.save();
               
-              ctx.globalAlpha = overlay.opacity;
-              ctx.fillStyle = overlay.backgroundColor;
-              ctx.fillRect(overlayX - bgWidth / 2, overlayY - bgHeight / 2, bgWidth, bgHeight);
-            }
-            
-            ctx.globalAlpha = 1;
-            ctx.fillStyle = overlay.color;
-            ctx.fillText(overlay.text, overlayX, overlayY);
-            
-            ctx.restore();
-          });
-        }
+              const overlayX = (overlay.x / 100) * canvas.width;
+              const overlayY = (overlay.y / 100) * canvas.height;
+              
+              ctx.font = `${overlay.fontSize}px ${overlay.fontFamily}`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              
+              if (overlay.backgroundColor) {
+                const metrics = ctx.measureText(overlay.text);
+                const padding = 20;
+                const bgHeight = overlay.fontSize + padding * 2;
+                const bgWidth = metrics.width + padding * 2;
+                
+                ctx.globalAlpha = overlay.opacity;
+                ctx.fillStyle = overlay.backgroundColor;
+                ctx.fillRect(overlayX - bgWidth / 2, overlayY - bgHeight / 2, bgWidth, bgHeight);
+              }
+              
+              ctx.globalAlpha = 1;
+              ctx.fillStyle = overlay.color;
+              ctx.fillText(overlay.text, overlayX, overlayY);
+              
+              ctx.restore();
+            });
+          }
+          
+          // Keep rendering continuously
+          imageAnimationRef.current = requestAnimationFrame(renderTitleCard);
+        };
+        
+        renderTitleCard();
       };
     } else if (item.type === "video") {
       const video = document.createElement("video");
@@ -537,6 +559,12 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
       videoRef.current = video;
 
       const drawVideoFrame = () => {
+        // Cancel any previous image animation from old image first
+        if (imageAnimationRef.current) {
+          cancelAnimationFrame(imageAnimationRef.current);
+          imageAnimationRef.current = null;
+        }
+        
         if (!video || !ctx || video.paused || video.ended) return;
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -591,11 +619,7 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
       video.onloadeddata = () => {
         console.log('Video loaded:', currentIndex);
         
-        // Cancel any previous image animation
-        if (imageAnimationRef.current) {
-          cancelAnimationFrame(imageAnimationRef.current);
-          imageAnimationRef.current = null;
-        }
+        // Don't cancel here - let the render loop handle it
         
         const clips = item.clips || [];
         
