@@ -348,6 +348,8 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
             const currentScale = startScale + (endScale - startScale) * easeProgress;
             
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             const baseScale = Math.min(canvas.width / img.width, canvas.height / img.height);
             const scaledWidth = img.width * baseScale * currentScale;
