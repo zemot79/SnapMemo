@@ -194,21 +194,57 @@ const Index = () => {
       toast.success(`${files.length} images added and sorted chronologically`);
     }
   }, [videoTitle, videoDescription, videoDate, mediaItems, createTitleCard]);
-  const handleVideosAdded = useCallback((files: File[]) => {
-    const newItems: MediaItem[] = files.map(file => ({
-      id: Math.random().toString(36).substr(2, 9),
-      file,
-      type: "video" as const,
-      duration: 5,
-      thumbnail: URL.createObjectURL(file),
-      clips: []
-    }));
-    setMediaItems(prev => {
-      const combined = [...prev, ...newItems];
-      // Sort by file creation time (lastModified)
-      return combined.sort((a, b) => a.file.lastModified - b.file.lastModified);
-    });
-    toast.success(`${files.length} videos added and sorted chronologically`);
+  const handleVideosAdded = useCallback(async (files: File[]) => {
+    const loadingToast = toast.loading(`Loading ${files.length} video${files.length > 1 ? 's' : ''}...`);
+    
+    try {
+      const newItems: MediaItem[] = await Promise.all(
+        files.map(file => 
+          new Promise<MediaItem>((resolve) => {
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            
+            video.onloadedmetadata = () => {
+              URL.revokeObjectURL(video.src);
+              resolve({
+                id: Math.random().toString(36).substr(2, 9),
+                file,
+                type: "video" as const,
+                duration: Math.round(video.duration),
+                thumbnail: URL.createObjectURL(file),
+                clips: []
+              });
+            };
+            
+            video.onerror = () => {
+              URL.revokeObjectURL(video.src);
+              resolve({
+                id: Math.random().toString(36).substr(2, 9),
+                file,
+                type: "video" as const,
+                duration: 5,
+                thumbnail: URL.createObjectURL(file),
+                clips: []
+              });
+            };
+            
+            video.src = URL.createObjectURL(file);
+          })
+        )
+      );
+      
+      setMediaItems(prev => {
+        const combined = [...prev, ...newItems];
+        return combined.sort((a, b) => a.file.lastModified - b.file.lastModified);
+      });
+      
+      toast.dismiss(loadingToast);
+      toast.success(`${files.length} video${files.length > 1 ? 's' : ''} added and sorted chronologically`);
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      toast.error("Error loading videos");
+      console.error("Video loading error:", error);
+    }
   }, []);
   const handleRemove = useCallback((id: string) => {
     setMediaItems(prev => prev.filter(item => item.id !== id));
