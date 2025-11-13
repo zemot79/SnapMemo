@@ -223,9 +223,6 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
     if (!item) return;
 
     console.log('Rendering item:', currentIndex, item.type);
-
-    // Stop rendering flag for previous item
-    isRenderingRef.current = false;
     
     // Clean up previous video
     if (videoRef.current) {
@@ -233,7 +230,7 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
       videoRef.current = null;
     }
 
-    // Cancel any ongoing animation
+    // Cancel any ongoing animation - but DON'T stop rendering yet
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
@@ -359,11 +356,6 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
           
           const animate = () => {
             try {
-              if (!isRenderingRef.current) {
-                console.log('⚠️ Animation stopped by flag');
-                return;
-              }
-              
               const elapsed = Date.now() - startTime;
               const progress = Math.min(elapsed / animationDuration, 1);
               const easeProgress = 1 - Math.pow(1 - progress, 3);
@@ -389,14 +381,12 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
               ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
               drawTextOverlays();
               
-              // CRITICAL FIX: Keep animating even after progress reaches 1 to keep image visible
-              if (isRenderingRef.current) {
-                imageAnimationRef.current = requestAnimationFrame(animate);
-              }
+              // Keep rendering continuously - will be cancelled when item changes
+              imageAnimationRef.current = requestAnimationFrame(animate);
             } catch (error) {
-              console.error('❌ Animation error:', error);
-              setErrorMessage(`Animation failed: ${error}`);
-              isRenderingRef.current = false;
+              console.error('❌ Focal point animation error:', error);
+              setErrorMessage('Animation failed');
+              toast.error('Animation error');
             }
           };
           
@@ -412,11 +402,6 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
           
           const animate = () => {
             try {
-              if (!isRenderingRef.current) {
-                console.log('⚠️ Ken Burns stopped by flag');
-                return;
-              }
-              
               const elapsed = Date.now() - startTime;
               const progress = Math.min(elapsed / animationDuration, 1);
               const easeProgress = 1 - Math.pow(1 - progress, 3);
@@ -454,39 +439,34 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
               ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
               drawTextOverlays();
               
-              // CRITICAL FIX: Keep animating to maintain image on screen
-              if (isRenderingRef.current) {
-                imageAnimationRef.current = requestAnimationFrame(animate);
-              }
+              // Keep rendering continuously
+              imageAnimationRef.current = requestAnimationFrame(animate);
             } catch (error) {
               console.error('❌ Ken Burns error:', error);
-              setErrorMessage(`Ken Burns failed: ${error}`);
-              isRenderingRef.current = false;
+              setErrorMessage('Ken Burns failed');
+              toast.error('Animation error');
             }
           };
           
           animate();
         } else {
-          // No animation - just keep image visible with continuous redraw
-          console.log('✅ Static image display');
-          setLoadingStatus(`Displaying image ${currentIndex + 1}`);
-          isRenderingRef.current = true;
+          // No animation, keep rendering static image continuously
+          console.log('✅ Static image - continuous render');
+          setLoadingStatus("");
+          setErrorMessage("");
           
-          const keepVisible = () => {
+          const renderStatic = () => {
             try {
-              if (!isRenderingRef.current) return;
               drawStatic();
               drawTextOverlays();
-              if (isRenderingRef.current) {
-                imageAnimationRef.current = requestAnimationFrame(keepVisible);
-              }
+              imageAnimationRef.current = requestAnimationFrame(renderStatic);
             } catch (error) {
-              console.error('❌ Static display error:', error);
-              setErrorMessage(`Display failed: ${error}`);
+              console.error('❌ Static render error:', error);
+              toast.error('Render failed');
             }
           };
           
-          keepVisible();
+          renderStatic();
         }
       }
     } else if (item.type === "titleCard") {
