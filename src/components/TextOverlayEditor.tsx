@@ -30,7 +30,7 @@ export const TextOverlayEditor = ({
       id: Math.random().toString(36).substr(2, 9),
       text: "New Text",
       x: 50,
-      y: 50,
+      y: 85,
       fontSize: 48,
       fontFamily: "Inter",
       color: "#ffffff",
