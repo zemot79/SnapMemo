@@ -3,19 +3,18 @@ import { Upload, Video } from "lucide-react";
 import { toast } from "sonner";
 
 interface VideoUploaderProps {
-  onFilesAdded: (files: File[]) => void;
+  onFilesAdded: (files: File[]) => void | Promise<void>;
 }
 
 export const VideoUploader = ({ onFilesAdded }: VideoUploaderProps) => {
   const handleDrop = useCallback(
-    (e: React.DragEvent) => {
+    async (e: React.DragEvent) => {
       e.preventDefault();
       const files = Array.from(e.dataTransfer.files).filter((file) =>
         file.type.startsWith("video/")
       );
       if (files.length > 0) {
-        onFilesAdded(files);
-        toast.success(`${files.length} videos added`);
+        await onFilesAdded(files);
       } else {
         toast.error("Only video files can be added");
       }
@@ -28,11 +27,10 @@ export const VideoUploader = ({ onFilesAdded }: VideoUploaderProps) => {
   }, []);
 
   const handleFileInput = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files || []);
       if (files.length > 0) {
-        onFilesAdded(files);
-        toast.success(`${files.length} videos added`);
+        await onFilesAdded(files);
       }
     },
     [onFilesAdded]

@@ -157,7 +157,8 @@ export const VideoEditor = ({
                 <video
                   src={video.thumbnail}
                   className="w-full h-full object-cover"
-                  muted
+                  controls
+                  preload="metadata"
                 />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
