@@ -36,6 +36,11 @@ export const ExportPanel = ({ onExport, disabled, canvasRef, totalDuration = 0 }
       return;
     }
     
+    // Warn about format limitations
+    if (format !== 'webm') {
+      toast.warning("Only WebM format is fully supported. File will be saved as WebM.");
+    }
+    
     try {
       const canvas = canvasRef.current;
       
@@ -51,6 +56,7 @@ export const ExportPanel = ({ onExport, disabled, canvasRef, totalDuration = 0 }
       
       setIsRecording(true);
       setRecordingProgress(0);
+      toast.info("Starting video capture...");
       
       // Start recording
       const stream = canvas.captureStream(fps);
@@ -60,6 +66,10 @@ export const ExportPanel = ({ onExport, disabled, canvasRef, totalDuration = 0 }
         mimeType = 'video/webm;codecs=vp9';
       } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
         mimeType = 'video/webm;codecs=vp8';
+      } else {
+        toast.error("Browser doesn't support WebM recording");
+        setIsRecording(false);
+        return;
       }
       
       const recorder = new MediaRecorder(stream, {
@@ -82,7 +92,8 @@ export const ExportPanel = ({ onExport, disabled, canvasRef, totalDuration = 0 }
         const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
-        a.download = `video_${Date.now()}.${format}`;
+        // Always save as .webm since that's what MediaRecorder produces
+        a.download = `video_${Date.now()}.webm`;
         document.body.appendChild(a);
         a.click();
         
@@ -94,7 +105,7 @@ export const ExportPanel = ({ onExport, disabled, canvasRef, totalDuration = 0 }
         stream.getTracks().forEach(track => track.stop());
         setIsRecording(false);
         setRecordingProgress(0);
-        toast.success("Video downloaded!");
+        toast.success("Video downloaded as WebM!");
       };
       
       recorder.onerror = (e) => {
@@ -107,7 +118,7 @@ export const ExportPanel = ({ onExport, disabled, canvasRef, totalDuration = 0 }
       
       // Start recording
       recorder.start(100);
-      toast.info(`Recording started... ${Math.ceil(totalDuration)} seconds`);
+      toast.success(`Recording ${Math.ceil(totalDuration)}s video at ${quality} quality`);
       
       // Update progress
       const progressInterval = setInterval(() => {
@@ -165,10 +176,10 @@ export const ExportPanel = ({ onExport, disabled, canvasRef, totalDuration = 0 }
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="webm">WebM</SelectItem>
-              <SelectItem value="mp4">MP4</SelectItem>
-              <SelectItem value="mov">MOV</SelectItem>
-              <SelectItem value="wmv">WMV</SelectItem>
+              <SelectItem value="webm">WebM (Browser native)</SelectItem>
+              <SelectItem value="mp4">MP4 (Saved as WebM)*</SelectItem>
+              <SelectItem value="mov">MOV (Saved as WebM)*</SelectItem>
+              <SelectItem value="wmv">WMV (Saved as WebM)*</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -229,9 +240,14 @@ export const ExportPanel = ({ onExport, disabled, canvasRef, totalDuration = 0 }
         {isRecording ? "Recording..." : "Export Video"}
       </Button>
 
-      <p className="text-xs text-muted-foreground text-center">
-        Video rendering happens in your browser
-      </p>
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground text-center">
+          Video rendering happens in your browser
+        </p>
+        <p className="text-xs text-muted-foreground text-center">
+          *Browser only supports WebM export. Convert to other formats using external tools.
+        </p>
+      </div>
     </div>
   );
 };
