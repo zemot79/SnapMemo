@@ -970,7 +970,7 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
               ⏳ {loadingStatus}
             </div>
           )}
-          <div className="flex-1 flex items-center justify-center bg-black rounded-lg overflow-hidden relative" style={{ minHeight: '70vh' }}>
+          <div className="w-full aspect-video flex items-center justify-center bg-black rounded-lg overflow-hidden relative">
             <canvas
               ref={canvasRef}
               width={1920}
