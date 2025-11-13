@@ -200,23 +200,42 @@ const Index = () => {
     try {
       const newItems: MediaItem[] = await Promise.all(
         files.map(file => 
-          new Promise<MediaItem>((resolve) => {
+          new Promise<MediaItem>((resolve, reject) => {
             const video = document.createElement('video');
             video.preload = 'metadata';
             
-            video.onloadedmetadata = () => {
+            const timeout = setTimeout(() => {
               URL.revokeObjectURL(video.src);
+              console.warn(`Timeout loading metadata for ${file.name}, using default duration`);
               resolve({
                 id: Math.random().toString(36).substr(2, 9),
                 file,
                 type: "video" as const,
-                duration: Math.round(video.duration),
+                duration: 5,
                 thumbnail: URL.createObjectURL(file),
+                clips: []
+              });
+            }, 10000); // 10 second timeout
+            
+            video.onloadedmetadata = () => {
+              clearTimeout(timeout);
+              const blobUrl = video.src;
+              const duration = Math.round(video.duration) || 5;
+              console.log(`Loaded video: ${file.name}, duration: ${duration}s`);
+              
+              resolve({
+                id: Math.random().toString(36).substr(2, 9),
+                file,
+                type: "video" as const,
+                duration: duration,
+                thumbnail: blobUrl, // Keep the same URL
                 clips: []
               });
             };
             
-            video.onerror = () => {
+            video.onerror = (e) => {
+              clearTimeout(timeout);
+              console.error(`Error loading video ${file.name}:`, e);
               URL.revokeObjectURL(video.src);
               resolve({
                 id: Math.random().toString(36).substr(2, 9),
@@ -229,6 +248,7 @@ const Index = () => {
             };
             
             video.src = URL.createObjectURL(file);
+            video.load(); // Explicitly trigger load
           })
         )
       );

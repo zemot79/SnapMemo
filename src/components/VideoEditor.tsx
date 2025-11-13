@@ -48,20 +48,35 @@ export const VideoEditor = ({
   };
 
   useEffect(() => {
+    // Use duration from mediaItems if already available
     videos.forEach((video) => {
-      if (!videoDurations[video.id]) {
+      if (!videoDurations[video.id] && video.duration) {
+        setVideoDurations((prev) => ({
+          ...prev,
+          [video.id]: video.duration,
+        }));
+      } else if (!videoDurations[video.id] && !video.duration) {
+        // Fallback: load metadata if not available
         const videoElement = document.createElement("video");
+        videoElement.preload = "metadata";
         videoElement.src = URL.createObjectURL(video.file);
         videoElement.onloadedmetadata = () => {
           setVideoDurations((prev) => ({
             ...prev,
-            [video.id]: Math.floor(videoElement.duration),
+            [video.id]: Math.floor(videoElement.duration) || 5,
+          }));
+          URL.revokeObjectURL(videoElement.src);
+        };
+        videoElement.onerror = () => {
+          setVideoDurations((prev) => ({
+            ...prev,
+            [video.id]: 5,
           }));
           URL.revokeObjectURL(videoElement.src);
         };
       }
     });
-  }, [videos]);
+  }, [videos, videoDurations]);
 
   const addClip = (videoId: string) => {
     const video = videos.find((v) => v.id === videoId);
