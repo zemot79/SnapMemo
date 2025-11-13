@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { MediaItem, TextOverlay } from "./Timeline";
 import { GlobeAnimation } from "./GlobeAnimation";
 import { geocodeLocation, Coordinates } from "@/lib/geocoding";
+import { toast } from "sonner";
 
 interface PreviewPanelProps {
   items: MediaItem[];
@@ -39,6 +40,9 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [transitionProgress, setTransitionProgress] = useState(0);
   const previousImageRef = useRef<HTMLCanvasElement | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const isRenderingRef = useRef<boolean>(false);
   
   // Globe animation state
   const [showGlobeAnimation, setShowGlobeAnimation] = useState(false);
@@ -220,6 +224,9 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
 
     console.log('Rendering item:', currentIndex, item.type);
 
+    // Stop rendering flag for previous item
+    isRenderingRef.current = false;
+    
     // Clean up previous video
     if (videoRef.current) {
       videoRef.current.pause();
@@ -252,9 +259,16 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
         img.src = blobUrl;
         
         img.onload = () => {
-          console.log('Image loaded:', currentIndex);
+          console.log('✅ Image loaded successfully:', currentIndex);
+          setLoadingStatus(`Image ${currentIndex + 1} loaded`);
           loadedImagesRef.current.set(currentIndex, img!);
           renderImage(img!);
+        };
+        
+        img.onerror = (error) => {
+          console.error('❌ Image load failed:', currentIndex, error);
+          setErrorMessage(`Failed to load image ${currentIndex + 1}`);
+          setLoadingStatus("");
         };
       } else {
         // Image already loaded, render immediately
@@ -333,94 +347,146 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
         const shouldAnimateKenBurns = kenBurns?.enabled && !focalPoint;
         
         if (focalPoint) {
-          console.log('Starting focal point animation:', focalPoint);
-          // Animate zoom to focal point (existing logic)
+          console.log('✅ Starting focal point animation:', focalPoint);
+          setLoadingStatus(`Animating image ${currentIndex + 1} with focal point`);
+          setErrorMessage("");
+          
           const startTime = Date.now();
           const animationDuration = item.duration * 1000;
           const startScale = 1;
           const endScale = 1.5;
+          isRenderingRef.current = true;
           
           const animate = () => {
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min(elapsed / animationDuration, 1);
-            const easeProgress = 1 - Math.pow(1 - progress, 3);
-            
-            const currentScale = startScale + (endScale - startScale) * easeProgress;
-            
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            const baseScale = Math.min(canvas.width / img.width, canvas.height / img.height);
-            const scaledWidth = img.width * baseScale * currentScale;
-            const scaledHeight = img.height * baseScale * currentScale;
-            
-            const targetX = canvas.width / 2 - (focalPoint.x * img.width * baseScale * currentScale);
-            const targetY = canvas.height / 2 - (focalPoint.y * img.height * baseScale * currentScale);
-            const startX = (canvas.width - img.width * baseScale) / 2;
-            const startY = (canvas.height - img.height * baseScale) / 2;
-            
-            const x = startX + (targetX - startX) * easeProgress;
-            const y = startY + (targetY - startY) * easeProgress;
-            
-            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
-            drawTextOverlays();
-            
-            if (progress < 1) {
-              imageAnimationRef.current = requestAnimationFrame(animate);
+            try {
+              if (!isRenderingRef.current) {
+                console.log('⚠️ Animation stopped by flag');
+                return;
+              }
+              
+              const elapsed = Date.now() - startTime;
+              const progress = Math.min(elapsed / animationDuration, 1);
+              const easeProgress = 1 - Math.pow(1 - progress, 3);
+              
+              const currentScale = startScale + (endScale - startScale) * easeProgress;
+              
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.fillStyle = '#000000';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              
+              const baseScale = Math.min(canvas.width / img.width, canvas.height / img.height);
+              const scaledWidth = img.width * baseScale * currentScale;
+              const scaledHeight = img.height * baseScale * currentScale;
+              
+              const targetX = canvas.width / 2 - (focalPoint.x * img.width * baseScale * currentScale);
+              const targetY = canvas.height / 2 - (focalPoint.y * img.height * baseScale * currentScale);
+              const startX = (canvas.width - img.width * baseScale) / 2;
+              const startY = (canvas.height - img.height * baseScale) / 2;
+              
+              const x = startX + (targetX - startX) * easeProgress;
+              const y = startY + (targetY - startY) * easeProgress;
+              
+              ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+              drawTextOverlays();
+              
+              // CRITICAL FIX: Keep animating even after progress reaches 1 to keep image visible
+              if (isRenderingRef.current) {
+                imageAnimationRef.current = requestAnimationFrame(animate);
+              }
+            } catch (error) {
+              console.error('❌ Animation error:', error);
+              setErrorMessage(`Animation failed: ${error}`);
+              isRenderingRef.current = false;
             }
           };
           
           animate();
         } else if (shouldAnimateKenBurns) {
-          console.log('Starting Ken Burns animation:', kenBurns.effect);
+          console.log('✅ Starting Ken Burns animation:', kenBurns.effect);
+          setLoadingStatus(`Ken Burns effect on image ${currentIndex + 1}`);
+          setErrorMessage("");
+          
           const startTime = Date.now();
           const animationDuration = item.duration * 1000;
+          isRenderingRef.current = true;
           
           const animate = () => {
-            const elapsed = Date.now() - startTime;
-            const progress = Math.min(elapsed / animationDuration, 1);
-            const easeProgress = 1 - Math.pow(1 - progress, 3);
-            
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            const baseScale = Math.min(canvas.width / img.width, canvas.height / img.height);
-            
-            let scale = baseScale;
-            let offsetX = 0;
-            let offsetY = 0;
-            
-            switch (kenBurns.effect) {
-              case "zoomIn":
-                scale = baseScale * (1 + progress * 0.3);
-                break;
-              case "zoomOut":
-                scale = baseScale * (1.3 - progress * 0.3);
-                break;
-              case "panLeft":
-                offsetX = -(progress * 200);
-                break;
-              case "panRight":
-                offsetX = progress * 200;
-                break;
-            }
-            
-            const scaledWidth = img.width * scale;
-            const scaledHeight = img.height * scale;
-            const x = (canvas.width - scaledWidth) / 2 + offsetX;
-            const y = (canvas.height - scaledHeight) / 2 + offsetY;
-            
-            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
-            drawTextOverlays();
-            
-            if (progress < 1) {
-              imageAnimationRef.current = requestAnimationFrame(animate);
+            try {
+              if (!isRenderingRef.current) {
+                console.log('⚠️ Ken Burns stopped by flag');
+                return;
+              }
+              
+              const elapsed = Date.now() - startTime;
+              const progress = Math.min(elapsed / animationDuration, 1);
+              const easeProgress = 1 - Math.pow(1 - progress, 3);
+              
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.fillStyle = '#000000';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              
+              const baseScale = Math.min(canvas.width / img.width, canvas.height / img.height);
+              
+              let scale = baseScale;
+              let offsetX = 0;
+              let offsetY = 0;
+              
+              switch (kenBurns.effect) {
+                case "zoomIn":
+                  scale = baseScale * (1 + progress * 0.3);
+                  break;
+                case "zoomOut":
+                  scale = baseScale * (1.3 - progress * 0.3);
+                  break;
+                case "panLeft":
+                  offsetX = -(progress * 200);
+                  break;
+                case "panRight":
+                  offsetX = progress * 200;
+                  break;
+              }
+              
+              const scaledWidth = img.width * scale;
+              const scaledHeight = img.height * scale;
+              const x = (canvas.width - scaledWidth) / 2 + offsetX;
+              const y = (canvas.height - scaledHeight) / 2 + offsetY;
+              
+              ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+              drawTextOverlays();
+              
+              // CRITICAL FIX: Keep animating to maintain image on screen
+              if (isRenderingRef.current) {
+                imageAnimationRef.current = requestAnimationFrame(animate);
+              }
+            } catch (error) {
+              console.error('❌ Ken Burns error:', error);
+              setErrorMessage(`Ken Burns failed: ${error}`);
+              isRenderingRef.current = false;
             }
           };
           
           animate();
+        } else {
+          // No animation - just keep image visible with continuous redraw
+          console.log('✅ Static image display');
+          setLoadingStatus(`Displaying image ${currentIndex + 1}`);
+          isRenderingRef.current = true;
+          
+          const keepVisible = () => {
+            try {
+              if (!isRenderingRef.current) return;
+              drawStatic();
+              drawTextOverlays();
+              if (isRenderingRef.current) {
+                imageAnimationRef.current = requestAnimationFrame(keepVisible);
+              }
+            } catch (error) {
+              console.error('❌ Static display error:', error);
+              setErrorMessage(`Display failed: ${error}`);
+            }
+          };
+          
+          keepVisible();
         }
       }
     } else if (item.type === "titleCard") {
@@ -756,18 +822,21 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
     // If we're at the start and have a location, show globe animation first
     if (coordinates && location && !showGlobeAnimation && !isPlaying && currentIndex === 0 && progress === 0) {
       setShowGlobeAnimation(true);
+      toast.info("Starting with location animation");
       return;
     }
     
     const newPlayingState = !isPlaying;
     setIsPlaying(newPlayingState);
     
-    console.log('Play/Pause:', newPlayingState);
+    console.log('▶️ Play/Pause:', newPlayingState);
+    toast.success(newPlayingState ? "Playback started" : "Playback paused");
     
     if (videoRef.current) {
       if (newPlayingState) {
         videoRef.current.play().catch(err => {
-          console.error('Video play error:', err);
+          console.error('❌ Video play error:', err);
+          toast.error("Failed to play video");
         });
       } else {
         videoRef.current.pause();
@@ -777,7 +846,8 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
     if (audioRef.current) {
       if (newPlayingState) {
         audioRef.current.play().catch(err => {
-          console.error('Audio play error:', err);
+          console.error('❌ Audio play error:', err);
+          toast.error("Failed to play audio");
         });
       } else {
         audioRef.current.pause();
@@ -786,20 +856,23 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
   };
 
   const handleGlobeAnimationComplete = () => {
-    console.log('Globe animation complete');
+    console.log('🌍 Globe animation complete');
     setShowGlobeAnimation(false);
     setIsPlaying(true);
+    toast.success("Starting slideshow");
     
     // Start audio if present
     if (audioRef.current) {
       audioRef.current.play().catch(err => {
-        console.error('Audio play error:', err);
+        console.error('❌ Audio play error:', err);
+        toast.error("Failed to play audio");
       });
     }
   };
 
   const handleReset = () => {
-    console.log('Reset');
+    console.log('🔄 Reset playback');
+    isRenderingRef.current = false;
     setIsPlaying(false);
     setCurrentIndex(0);
     setCurrentClipIndex(0);
@@ -807,6 +880,8 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
     setIsTransitioning(false);
     setTransitionProgress(0);
     setShowGlobeAnimation(false);
+    setLoadingStatus("");
+    setErrorMessage("");
     previousImageRef.current = null;
     
     if (videoRef.current) {
@@ -818,6 +893,8 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
+    
+    toast.success("Preview reset");
   };
 
   if (items.length === 0 && (!location || !coordinates)) {
@@ -855,7 +932,9 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
   // Cleanup all blob URLs on unmount
   React.useEffect(() => {
     return () => {
-      console.log('Cleaning up blob URLs:', blobUrlsRef.current.length);
+      console.log('🧹 Cleaning up blob URLs:', blobUrlsRef.current.length);
+      isRenderingRef.current = false;
+      
       blobUrlsRef.current.forEach(url => {
         try {
           URL.revokeObjectURL(url);
@@ -878,10 +957,20 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
 
   return (
     <div className="bg-card rounded-lg border border-border p-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left side - Video canvas */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex-1 flex items-center justify-center bg-black rounded-lg overflow-hidden relative aspect-video">
+      <div className="grid grid-cols-1 gap-6">
+        {/* Preview canvas - Much Bigger */}
+        <div className="space-y-4">
+          {errorMessage && (
+            <div className="bg-destructive/10 border border-destructive rounded-lg p-4 text-destructive text-sm">
+              ❌ {errorMessage}
+            </div>
+          )}
+          {loadingStatus && !errorMessage && (
+            <div className="bg-primary/10 border border-primary rounded-lg p-3 text-primary text-sm animate-pulse">
+              ⏳ {loadingStatus}
+            </div>
+          )}
+          <div className="flex-1 flex items-center justify-center bg-black rounded-lg overflow-hidden relative" style={{ minHeight: '70vh' }}>
             <canvas
               ref={canvasRef}
               width={1920}
@@ -966,37 +1055,35 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
           </div>
         </div>
         
-        {/* Right side - Video information */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="space-y-4">
-            {videoTitle && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Video Title</h3>
-                <p className="text-lg font-semibold">{videoTitle}</p>
-              </div>
-            )}
-            
-            {videoDescription && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
-                <p className="text-sm">{videoDescription}</p>
-              </div>
-            )}
-            
-            {location && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Location</h3>
-                <p className="text-sm">{location}</p>
-              </div>
-            )}
-            
-            {videoDate && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Date</h3>
-                <p className="text-sm">{videoDate}</p>
-              </div>
-            )}
-          </div>
+        {/* Video information - Below preview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {videoTitle && (
+            <div className="bg-muted/50 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">Video Title</h3>
+              <p className="text-base font-semibold">{videoTitle}</p>
+            </div>
+          )}
+          
+          {videoDescription && (
+            <div className="bg-muted/50 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
+              <p className="text-sm">{videoDescription}</p>
+            </div>
+          )}
+          
+          {location && (
+            <div className="bg-muted/50 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">Location</h3>
+              <p className="text-sm">{location}</p>
+            </div>
+          )}
+          
+          {videoDate && (
+            <div className="bg-muted/50 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">Date</h3>
+              <p className="text-sm">{videoDate}</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
