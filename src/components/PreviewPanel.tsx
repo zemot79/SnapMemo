@@ -660,26 +660,6 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
           }
         } else {
           // Handle normal duration
-          const transitionDuration = 0.5; // 0.5 seconds for transition
-          
-          if (prev >= currentItem.duration - transitionDuration && !isTransitioning && currentIndex < items.length - 1) {
-            console.log('Starting transition');
-            // Start transition
-            setIsTransitioning(true);
-            setTransitionProgress(0);
-            
-            // Capture current canvas state
-            if (canvasRef.current && !previousImageRef.current) {
-              previousImageRef.current = document.createElement('canvas');
-              previousImageRef.current.width = canvasRef.current.width;
-              previousImageRef.current.height = canvasRef.current.height;
-              const prevCtx = previousImageRef.current.getContext('2d');
-              if (prevCtx) {
-                prevCtx.drawImage(canvasRef.current, 0, 0);
-              }
-            }
-          }
-          
           if (prev >= currentItem.duration) {
             if (currentIndex < items.length - 1) {
               setCurrentIndex(currentIndex + 1);
@@ -703,65 +683,8 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
     return () => clearInterval(interval);
   }, [isPlaying, currentIndex, currentClipIndex, items, isTransitioning]);
 
-  // Transition animation effect
-  useEffect(() => {
-    if (!isTransitioning || !canvasRef.current || !previousImageRef.current) return;
-    
-    console.log('Animating transition');
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    
-    const transitionType = getRandomTransition();
-    const transitionDuration = 500; // 0.5 seconds
-    const startTime = Date.now();
-    
-    const animateTransition = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / transitionDuration, 1);
-      
-      // Get next item from cache
-      const nextIndex = Math.min(currentIndex + 1, items.length - 1);
-      const nextItem = items[nextIndex];
-      
-      if (nextItem && nextItem.type === "image") {
-        // Use cached image instead of creating new one
-        const img = loadedImagesRef.current.get(nextIndex);
-        
-        if (img) {
-          applyTransition(ctx, previousImageRef.current!, img, progress, transitionType);
-          
-          if (progress < 1) {
-            transitionFrameRef.current = requestAnimationFrame(animateTransition);
-          } else {
-            setIsTransitioning(false);
-            previousImageRef.current = null;
-          }
-        } else {
-          // Image not loaded yet, skip transition
-          console.log('Next image not in cache, skipping transition');
-          setIsTransitioning(false);
-          previousImageRef.current = null;
-        }
-      } else {
-        // For videos or if no next item, just finish transition
-        if (progress < 1) {
-          transitionFrameRef.current = requestAnimationFrame(animateTransition);
-        } else {
-          setIsTransitioning(false);
-          previousImageRef.current = null;
-        }
-      }
-    };
-    
-    animateTransition();
-    
-    return () => {
-      if (transitionFrameRef.current) {
-        cancelAnimationFrame(transitionFrameRef.current);
-      }
-    };
-  }, [isTransitioning, currentIndex, items, transitions]);
+  // Transitions disabled - they were causing black screen issues because next images weren't preloaded
+  // If you want to re-enable transitions, you'll need to preload the next image before starting the transition
 
   // Initial canvas setup - render first item immediately
   useEffect(() => {
