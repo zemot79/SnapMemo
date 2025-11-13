@@ -195,20 +195,29 @@ const Index = () => {
     }
   }, [videoTitle, videoDescription, videoDate, mediaItems, createTitleCard]);
   const validateVideo = (file: File): { valid: boolean; error?: string } => {
-    // Supported formats
-    const supportedFormats = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
-    const supportedExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi'];
+    // Browser-supported formats only (AVI is NOT supported by browsers)
+    const supportedFormats = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-m4v'];
+    const supportedExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.m4v'];
     
-    // Check file type
-    const hasValidMimeType = supportedFormats.includes(file.type);
-    const hasValidExtension = supportedExtensions.some(ext => 
-      file.name.toLowerCase().endsWith(ext)
-    );
+    // Check file extension first (more reliable)
+    const fileName = file.name.toLowerCase();
+    const hasValidExtension = supportedExtensions.some(ext => fileName.endsWith(ext));
     
-    if (!hasValidMimeType && !hasValidExtension) {
+    // Warn about AVI files specifically
+    if (fileName.endsWith('.avi')) {
       return {
         valid: false,
-        error: `Unsupported format: ${file.name}. Please use MP4, WebM, MOV, or AVI.`
+        error: `AVI format not supported in browsers: ${file.name}. Please convert to MP4 first.`
+      };
+    }
+    
+    // If file has valid extension OR valid MIME type, accept it
+    const hasValidMimeType = file.type && supportedFormats.includes(file.type);
+    
+    if (!hasValidExtension && !hasValidMimeType) {
+      return {
+        valid: false,
+        error: `Unsupported format: ${file.name}. Use MP4, WebM, MOV, or OGG only.`
       };
     }
     
@@ -258,8 +267,8 @@ const Index = () => {
     const loadingToast = toast.loading(`Loading ${validFiles.length} video${validFiles.length > 1 ? 's' : ''}...`);
     
     try {
-      const newItems: MediaItem[] = await Promise.all(
-        validFiles.map(file =>
+      const loadResults = await Promise.allSettled(
+        validFiles.map(file => 
           new Promise<MediaItem>((resolve, reject) => {
             const video = document.createElement('video');
             video.preload = 'metadata';
@@ -297,14 +306,10 @@ const Index = () => {
               clearTimeout(timeout);
               console.error(`Error loading video ${file.name}:`, e);
               URL.revokeObjectURL(video.src);
-              resolve({
-                id: Math.random().toString(36).substr(2, 9),
-                file,
-                type: "video" as const,
-                duration: 5,
-                thumbnail: URL.createObjectURL(file),
-                clips: []
-              });
+              
+              // Reject videos that fail to load (likely codec issues)
+              toast.error(`Cannot load ${file.name}: Video codec not supported by browser`);
+              reject(new Error(`Failed to load video: ${file.name}`));
             };
             
             video.src = URL.createObjectURL(file);
@@ -313,18 +318,32 @@ const Index = () => {
         )
       );
       
-      setMediaItems(prev => {
-        const combined = [...prev, ...newItems];
-        return combined.sort((a, b) => a.file.lastModified - b.file.lastModified);
-      });
+      // Filter out failed loads
+      const successfulItems = loadResults
+        .filter((result): result is PromiseFulfilledResult<MediaItem> => result.status === 'fulfilled')
+        .map(result => result.value);
+      
+      const failedCount = loadResults.filter(result => result.status === 'rejected').length;
+      
+      if (successfulItems.length > 0) {
+        setMediaItems(prev => {
+          const combined = [...prev, ...successfulItems];
+          return combined.sort((a, b) => a.file.lastModified - b.file.lastModified);
+        });
+      }
       
       toast.dismiss(loadingToast);
       
-      let successMessage = `${validFiles.length} video${validFiles.length > 1 ? 's' : ''} added`;
-      if (invalidFiles.length > 0) {
-        successMessage += ` (${invalidFiles.length} skipped due to errors)`;
+      if (successfulItems.length > 0) {
+        let successMessage = `${successfulItems.length} video${successfulItems.length > 1 ? 's' : ''} added`;
+        const totalFailed = invalidFiles.length + failedCount;
+        if (totalFailed > 0) {
+          successMessage += ` (${totalFailed} failed)`;
+        }
+        toast.success(successMessage);
+      } else {
+        toast.error('No videos could be loaded. Check format and codec compatibility.');
       }
-      toast.success(successMessage);
     } catch (error) {
       toast.dismiss(loadingToast);
       toast.error("Error loading videos");
