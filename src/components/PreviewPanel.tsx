@@ -230,15 +230,13 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
       videoRef.current = null;
     }
 
-    // Cancel any ongoing animation - but DON'T stop rendering yet
+    // Cancel video animation frames
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
-    if (imageAnimationRef.current) {
-      cancelAnimationFrame(imageAnimationRef.current);
-      imageAnimationRef.current = null;
-    }
+    // DON'T cancel imageAnimationRef here - let it keep rendering until new image starts
+    // This prevents black screen flashes between images
     if (transitionFrameRef.current) {
       cancelAnimationFrame(transitionFrameRef.current);
       transitionFrameRef.current = null;
@@ -274,6 +272,12 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
       }
       
       function renderImage(img: HTMLImageElement) {
+        // NOW cancel the previous image animation before starting new one
+        if (imageAnimationRef.current) {
+          cancelAnimationFrame(imageAnimationRef.current);
+          imageAnimationRef.current = null;
+        }
+        
         const focalPoint = item.focalPoint;
         
         // Save current canvas state for transition
@@ -478,6 +482,13 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
       
       img.onload = () => {
         console.log('Title card loaded:', currentIndex);
+        
+        // Cancel any previous image animation
+        if (imageAnimationRef.current) {
+          cancelAnimationFrame(imageAnimationRef.current);
+          imageAnimationRef.current = null;
+        }
+        
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -579,6 +590,13 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
 
       video.onloadeddata = () => {
         console.log('Video loaded:', currentIndex);
+        
+        // Cancel any previous image animation
+        if (imageAnimationRef.current) {
+          cancelAnimationFrame(imageAnimationRef.current);
+          imageAnimationRef.current = null;
+        }
+        
         const clips = item.clips || [];
         
         if (clips.length > 0 && currentClipIndex < clips.length) {
