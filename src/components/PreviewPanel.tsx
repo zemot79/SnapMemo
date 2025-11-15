@@ -1057,36 +1057,37 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
     setIsDragging(true);
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging || !progressBarRef.current) return;
-    
-    e.preventDefault();
-    
-    const rect = progressBarRef.current.getBoundingClientRect();
-    const dragX = e.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, dragX / rect.width));
-    
-    const totalDuration = items.reduce((acc, item) => acc + item.duration, 0);
-    const targetTime = percentage * totalDuration;
-    
-    seekToPosition(targetTime);
-  };
-
   // Add global mouse up and move listeners for drag
   useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mouseup', handleMouseUp);
-      window.addEventListener('mousemove', handleMouseMove);
-      return () => {
-        window.removeEventListener('mouseup', handleMouseUp);
-        window.removeEventListener('mousemove', handleMouseMove);
-      };
-    }
-  }, [isDragging, items]);
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!progressBarRef.current) return;
+      
+      e.preventDefault();
+      
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const dragX = e.clientX - rect.left;
+      const percentage = Math.max(0, Math.min(1, dragX / rect.width));
+      
+      const totalDuration = items.reduce((acc, item) => acc + item.duration, 0);
+      const targetTime = percentage * totalDuration;
+      
+      seekToPosition(targetTime);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mousemove', handleMouseMove);
+    
+    return () => {
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [isDragging, items, seekToPosition]);
 
   if (items.length === 0 && (!location || !coordinates)) {
     return (
