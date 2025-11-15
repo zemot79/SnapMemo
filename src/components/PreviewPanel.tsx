@@ -1001,6 +1001,11 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
   const progressPercentage = currentItem && items.length > 0
     ? (progress / currentItem.duration) * 100
     : 0;
+  
+  // Calculate total video progress across all slides
+  const totalDuration = items.reduce((acc, item) => acc + item.duration, 0);
+  const elapsedTime = items.slice(0, currentIndex).reduce((acc, item) => acc + item.duration, 0) + progress;
+  const totalProgressPercentage = totalDuration > 0 ? (elapsedTime / totalDuration) * 100 : 0;
 
   // Setup audio
   React.useEffect(() => {
@@ -1101,16 +1106,25 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
               />
             </div>
             
-            <div className="flex items-center justify-between text-sm text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
-              <span className="font-medium">Total Video Duration</span>
-              <span className="font-mono font-semibold text-primary">
-                {(() => {
-                  const globeDuration = location ? 3 : 0;
-                  const baseDuration = items.reduce((acc, item) => acc + item.duration, 0);
-                  const totalDuration = baseDuration + globeDuration;
-                  return `${Math.round(totalDuration)}s`;
-                })()}
-              </span>
+            <div className="space-y-2 bg-muted/30 rounded-lg px-3 py-3">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span className="font-medium">Total Video Duration</span>
+                <span className="font-mono font-semibold text-primary">
+                  {(() => {
+                    const globeDuration = location ? 3 : 0;
+                    const baseDuration = items.reduce((acc, item) => acc + item.duration, 0);
+                    const totalDuration = baseDuration + globeDuration;
+                    return `${Math.round(totalDuration)}s`;
+                  })()}
+                </span>
+              </div>
+              
+              <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-primary h-full transition-all duration-100"
+                  style={{ width: `${Math.min(totalProgressPercentage, 100)}%` }}
+                />
+              </div>
             </div>
             
             <div className="flex items-center justify-center gap-2">
