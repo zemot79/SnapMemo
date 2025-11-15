@@ -43,6 +43,8 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
   const [loadingStatus, setLoadingStatus] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const isRenderingRef = useRef<boolean>(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const progressBarRef = useRef<HTMLDivElement>(null);
   
   // Globe animation state
   const [showGlobeAnimation, setShowGlobeAnimation] = useState(false);
@@ -989,6 +991,79 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
     toast.success("Preview reset");
   };
 
+  const seekToPosition = (targetTime: number) => {
+    if (items.length === 0) return;
+    
+    let accumulatedTime = 0;
+    let targetIndex = 0;
+    let targetProgress = 0;
+    
+    // Find which slide and progress within that slide
+    for (let i = 0; i < items.length; i++) {
+      if (accumulatedTime + items[i].duration > targetTime) {
+        targetIndex = i;
+        targetProgress = targetTime - accumulatedTime;
+        break;
+      }
+      accumulatedTime += items[i].duration;
+    }
+    
+    // If targetTime exceeds total duration, go to last slide
+    if (targetTime >= accumulatedTime) {
+      targetIndex = items.length - 1;
+      targetProgress = items[targetIndex].duration;
+    }
+    
+    // Update state
+    setCurrentIndex(targetIndex);
+    setProgress(targetProgress);
+    setCurrentClipIndex(0);
+    
+    console.log(`⏩ Seeking to ${targetTime.toFixed(1)}s (Slide ${targetIndex + 1}, Progress ${targetProgress.toFixed(1)}s)`);
+  };
+
+  const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!progressBarRef.current) return;
+    
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+    
+    const totalDuration = items.reduce((acc, item) => acc + item.duration, 0);
+    const targetTime = percentage * totalDuration;
+    
+    seekToPosition(targetTime);
+  };
+
+  const handleProgressBarDrag = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !progressBarRef.current) return;
+    
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const dragX = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, dragX / rect.width));
+    
+    const totalDuration = items.reduce((acc, item) => acc + item.duration, 0);
+    const targetTime = percentage * totalDuration;
+    
+    seekToPosition(targetTime);
+  };
+
+  const handleMouseDown = () => {
+    setIsDragging(true);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Add global mouse up listener for drag
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => window.removeEventListener('mouseup', handleMouseUp);
+    }
+  }, [isDragging]);
+
   if (items.length === 0 && (!location || !coordinates)) {
     return (
       <div className="bg-card rounded-lg border border-border flex items-center justify-center h-full">
@@ -1119,10 +1194,20 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
                 </span>
               </div>
               
-              <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+              <div 
+                ref={progressBarRef}
+                className="relative w-full bg-secondary rounded-full h-3 overflow-visible cursor-pointer group"
+                onClick={handleProgressBarClick}
+                onMouseMove={handleProgressBarDrag}
+              >
                 <div
-                  className="bg-primary h-full transition-all duration-100"
+                  className="bg-primary h-full transition-all duration-100 rounded-full"
                   style={{ width: `${Math.min(totalProgressPercentage, 100)}%` }}
+                />
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-primary rounded-full border-2 border-background shadow-lg cursor-grab active:cursor-grabbing hover:scale-125 transition-transform"
+                  style={{ left: `calc(${Math.min(totalProgressPercentage, 100)}% - 8px)` }}
+                  onMouseDown={handleMouseDown}
                 />
               </div>
             </div>
