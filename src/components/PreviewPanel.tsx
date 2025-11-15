@@ -1023,7 +1023,7 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
   };
 
   const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!progressBarRef.current) return;
+    if (!progressBarRef.current || isDragging) return;
     
     const rect = progressBarRef.current.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
@@ -1038,6 +1038,9 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
   const handleProgressBarDrag = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isDragging || !progressBarRef.current) return;
     
+    e.preventDefault();
+    e.stopPropagation();
+    
     const rect = progressBarRef.current.getBoundingClientRect();
     const dragX = e.clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, dragX / rect.width));
@@ -1048,7 +1051,9 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
     seekToPosition(targetTime);
   };
 
-  const handleMouseDown = () => {
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
   };
 
@@ -1056,13 +1061,32 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
     setIsDragging(false);
   };
 
-  // Add global mouse up listener for drag
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging || !progressBarRef.current) return;
+    
+    e.preventDefault();
+    
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const dragX = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, dragX / rect.width));
+    
+    const totalDuration = items.reduce((acc, item) => acc + item.duration, 0);
+    const targetTime = percentage * totalDuration;
+    
+    seekToPosition(targetTime);
+  };
+
+  // Add global mouse up and move listeners for drag
   useEffect(() => {
     if (isDragging) {
       window.addEventListener('mouseup', handleMouseUp);
-      return () => window.removeEventListener('mouseup', handleMouseUp);
+      window.addEventListener('mousemove', handleMouseMove);
+      return () => {
+        window.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener('mousemove', handleMouseMove);
+      };
     }
-  }, [isDragging]);
+  }, [isDragging, items]);
 
   if (items.length === 0 && (!location || !coordinates)) {
     return (
@@ -1198,14 +1222,13 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
                 ref={progressBarRef}
                 className="relative w-full bg-secondary rounded-full h-3 overflow-visible cursor-pointer group"
                 onClick={handleProgressBarClick}
-                onMouseMove={handleProgressBarDrag}
               >
                 <div
                   className="bg-primary h-full transition-all duration-100 rounded-full"
                   style={{ width: `${Math.min(totalProgressPercentage, 100)}%` }}
                 />
                 <div
-                  className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-primary rounded-full border-2 border-background shadow-lg cursor-grab active:cursor-grabbing hover:scale-125 transition-transform"
+                  className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-primary rounded-full border-2 border-background shadow-lg cursor-grab active:cursor-grabbing hover:scale-125 transition-transform z-10"
                   style={{ left: `calc(${Math.min(totalProgressPercentage, 100)}% - 8px)` }}
                   onMouseDown={handleMouseDown}
                 />
