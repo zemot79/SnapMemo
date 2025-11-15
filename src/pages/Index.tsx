@@ -622,7 +622,7 @@ const Index = () => {
 
         <main className="pb-8">
           {/* Step 1: Video Title */}
-          {currentStep === 1 && <VideoTitleStep initialTitle={videoTitle} initialDescription={videoDescription} initialLocation={videoLocation} initialDate={videoDate} onNext={handleTitleNext} />}
+          {currentStep === 1 && <VideoTitleStep initialTitle={videoTitle} initialDescription={videoDescription} initialLocation={videoLocation} initialDate={videoDate} onNext={handleTitleNext} selectedTheme={selectedTheme} />}
 
           {/* Step 2: Image Upload */}
           {currentStep === 2 && <div className="max-w-6xl mx-auto space-y-6">
