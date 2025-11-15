@@ -5,6 +5,7 @@ import { MediaItem, TextOverlay } from "./Timeline";
 import { GlobeAnimation } from "./GlobeAnimation";
 import { geocodeLocation, Coordinates } from "@/lib/geocoding";
 import { toast } from "sonner";
+import { getThemeById } from "@/lib/themes";
 
 interface PreviewPanelProps {
   items: MediaItem[];
@@ -27,6 +28,7 @@ export interface PreviewPanelRef {
 export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ items, audioFile, transitions = ["fade"], location, videoTitle, videoDescription, videoDate, canvasRef: externalCanvasRef, onPlaybackComplete, selectedTheme = "classic" }, ref) => {
   const internalCanvasRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = externalCanvasRef || internalCanvasRef;
+  const theme = getThemeById(selectedTheme);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -84,22 +86,28 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     
-    // Draw a dark blue gradient background
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, '#1e3a8a');
-    gradient.addColorStop(1, '#0f172a');
-    ctx.fillStyle = gradient;
+    // Draw background with theme gradient or solid color
+    if (theme.gradient) {
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      const colors = theme.gradient.match(/#[0-9a-f]{6}/gi) || [theme.colors.primary, theme.colors.secondary];
+      gradient.addColorStop(0, colors[0]);
+      gradient.addColorStop(1, colors[colors.length - 1]);
+      ctx.fillStyle = gradient;
+    } else {
+      ctx.fillStyle = theme.colors.background;
+    }
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Draw location name in center
-    ctx.fillStyle = '#ffffff';
+    // Draw location name in center with theme colors
+    ctx.fillStyle = theme.colors.text;
     ctx.font = 'bold 72px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(location, canvas.width / 2, canvas.height / 2);
     
-    // Draw subtitle
+    // Draw subtitle with theme accent color
     ctx.font = '36px Arial';
+    ctx.fillStyle = theme.colors.accent;
     ctx.fillStyle = '#94a3b8';
     ctx.fillText('📍 Location', canvas.width / 2, canvas.height / 2 + 80);
     
@@ -301,7 +309,7 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
           ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
         };
         
-        // Draw text overlays helper function
+        // Draw text overlays helper function with theme colors
         const drawTextOverlays = () => {
           if (!item.textOverlays || item.textOverlays.length === 0) return;
           
@@ -329,9 +337,10 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
               ctx.fillRect(x - bgWidth / 2, y - bgHeight / 2, bgWidth, bgHeight);
             }
             
-            // Draw text
+            // Draw text with theme color if using default colors
             ctx.globalAlpha = 1;
-            ctx.fillStyle = overlay.color;
+            const useThemeColor = overlay.color === '#ffffff' || overlay.color === '#000000';
+            ctx.fillStyle = useThemeColor ? theme.colors.text : overlay.color;
             ctx.fillText(overlay.text, x, y);
             
             ctx.restore();
@@ -645,7 +654,8 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
             }
             
             ctx.globalAlpha = 1;
-            ctx.fillStyle = overlay.color;
+            const useThemeColor = overlay.color === '#ffffff' || overlay.color === '#000000';
+            ctx.fillStyle = useThemeColor ? theme.colors.text : overlay.color;
             ctx.fillText(overlay.text, overlayX, overlayY);
             
             ctx.restore();
