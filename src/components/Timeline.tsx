@@ -312,6 +312,19 @@ export const Timeline = ({
           </div>
         ))}
       </div>
+      
+      {/* Total Video Duration Counter */}
+      <div className="mt-4 p-4 bg-gradient-to-r from-primary/10 to-accent/10 rounded-lg border border-primary/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-primary" />
+            <span className="text-sm font-medium text-muted-foreground">Total Video Duration</span>
+          </div>
+          <div className="text-2xl font-bold text-primary">
+            {Math.round(totalDuration)} sec
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
