@@ -7,7 +7,7 @@ import { Card } from "./ui/card";
 interface ImageEditorProps {
   images: MediaItem[];
   onRemove: (id: string) => void;
-  onFocalPointChange: (id: string, focalPoint: { x: number; y: number }) => void;
+  onFocalPointChange: (id: string, focalPoint: { x: number; y: number }[]) => void;
   onReorder?: (fromIndex: number, toIndex: number) => void;
 }
 
@@ -23,13 +23,23 @@ export const ImageEditor = ({
 
   const handleImageClick = (
     e: React.MouseEvent<HTMLDivElement>,
-    imageId: string
+    imageId: string,
+    image: MediaItem
   ) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     
-    onFocalPointChange(imageId, { x, y });
+    const newPoint = { x, y };
+    const currentPoints = image.focalPoint || [];
+    
+    // Add point, max 2 points
+    if (currentPoints.length < 2) {
+      onFocalPointChange(imageId, [...currentPoints, newPoint]);
+    } else {
+      // Replace with new array starting with this point
+      onFocalPointChange(imageId, [newPoint]);
+    }
     setActiveImageId(imageId);
   };
 
@@ -93,7 +103,7 @@ export const ImageEditor = ({
           )}
           <div
             className="relative aspect-video bg-muted cursor-crosshair h-64"
-            onClick={(e) => handleImageClick(e, image.id)}
+            onClick={(e) => handleImageClick(e, image.id, image)}
           >
             {image.thumbnail && (
               <img
@@ -102,17 +112,21 @@ export const ImageEditor = ({
                 className="w-full h-full object-cover"
               />
             )}
-            {image.focalPoint && (
+            {image.focalPoint && image.focalPoint.map((point, idx) => (
               <div
+                key={idx}
                 className="absolute w-8 h-8 -ml-4 -mt-4 pointer-events-none"
                 style={{
-                  left: `${image.focalPoint.x}%`,
-                  top: `${image.focalPoint.y}%`,
+                  left: `${point.x}%`,
+                  top: `${point.y}%`,
                 }}
               >
-                <Target className="w-8 h-8 text-primary drop-shadow-lg animate-pulse" />
+                <Target className={`w-8 h-8 drop-shadow-lg ${idx === 0 ? 'text-primary' : 'text-secondary'} animate-pulse`} />
+                <span className="absolute top-0 left-0 text-xs font-bold text-white bg-black/50 rounded px-1">
+                  {idx + 1}
+                </span>
               </div>
-            )}
+            ))}
             <Button
               variant="destructive"
               size="icon"
@@ -136,9 +150,9 @@ export const ImageEditor = ({
             </div>
             <div className="flex items-center justify-between mt-2">
               <p className="text-xs text-muted-foreground">
-                {image.focalPoint
-                  ? `Focus: ${Math.round(image.focalPoint.x)}%, ${Math.round(image.focalPoint.y)}%`
-                  : "Click to set focus"}
+                {image.focalPoint && image.focalPoint.length > 0
+                  ? `${image.focalPoint.length} point${image.focalPoint.length > 1 ? 's' : ''} set`
+                  : "Click to set focus (max 2)"}
               </p>
               <p className="text-xs text-primary font-medium">
                 {image.duration} sec

@@ -24,7 +24,7 @@ export interface MediaItem {
   type: "image" | "video" | "titleCard" | "logoCard";
   duration: number;
   thumbnail?: string;
-  focalPoint?: { x: number; y: number };
+  focalPoint?: { x: number; y: number }[];
   clips?: { id: string; startTime: number; endTime: number }[];
   metadata?: {
     title?: string;
