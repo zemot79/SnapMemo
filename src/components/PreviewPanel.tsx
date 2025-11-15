@@ -1094,6 +1094,18 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
               <span>{progress.toFixed(1)}s / {currentItem?.duration.toFixed(1) || 0}s</span>
             </div>
             
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>Total Video Duration</span>
+              <span className="font-semibold">
+                {(() => {
+                  const globeDuration = location ? 3 : 0;
+                  const baseDuration = items.reduce((acc, item) => acc + item.duration, 0);
+                  const totalDuration = baseDuration + globeDuration;
+                  return `${Math.round(totalDuration)}s`;
+                })()}
+              </span>
+            </div>
+            
             <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
               <div
                 className="bg-primary h-full transition-all duration-100"
