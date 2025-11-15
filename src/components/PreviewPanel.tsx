@@ -995,24 +995,21 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
   const seekToPosition = (targetTime: number) => {
     if (items.length === 0) return;
     
+    const totalDuration = items.reduce((acc, item) => acc + item.duration, 0);
+    const clampedTime = Math.max(0, Math.min(targetTime, totalDuration));
+    
     let accumulatedTime = 0;
     let targetIndex = 0;
     let targetProgress = 0;
     
     // Find which slide and progress within that slide
     for (let i = 0; i < items.length; i++) {
-      if (accumulatedTime + items[i].duration > targetTime) {
+      if (accumulatedTime + items[i].duration > clampedTime) {
         targetIndex = i;
-        targetProgress = targetTime - accumulatedTime;
+        targetProgress = clampedTime - accumulatedTime;
         break;
       }
       accumulatedTime += items[i].duration;
-    }
-    
-    // If targetTime exceeds total duration, go to last slide
-    if (targetTime >= accumulatedTime) {
-      targetIndex = items.length - 1;
-      targetProgress = items[targetIndex].duration;
     }
     
     // Update state
