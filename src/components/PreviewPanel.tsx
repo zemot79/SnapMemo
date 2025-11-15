@@ -1113,13 +1113,6 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
               </span>
             </div>
             
-            <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-primary h-full transition-all duration-100"
-                style={{ width: `${Math.min(progressPercentage, 100)}%` }}
-              />
-            </div>
-            
             <div className="flex items-center justify-center gap-2">
               <Button
                 onClick={handlePlayPause}
