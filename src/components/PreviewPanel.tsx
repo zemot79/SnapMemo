@@ -494,14 +494,14 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
         }
       }
     } else if (item.type === "titleCard") {
-      // Handle title card
+      // Handle title card - render once only
       const img = new Image();
       const blobUrl = URL.createObjectURL(item.file);
       blobUrlsRef.current.push(blobUrl);
       img.src = blobUrl;
       
       img.onload = () => {
-        console.log('Title card loaded:', currentIndex);
+        console.log('✅ Title card loaded in preview:', currentIndex);
         
         // Don't cancel here - let the render loop handle it
         

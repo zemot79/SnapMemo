@@ -126,6 +126,11 @@ const Index = () => {
       
       img.onload = () => {
         console.log('✅ Source image loaded for title card');
+        
+        // Clear canvas first
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
         // Draw image on left 2/3
         const imageWidth = canvas.width * (2/3);
         const scale = Math.max(imageWidth / img.width, canvas.height / img.height);
@@ -152,14 +157,23 @@ const Index = () => {
         const textX = imageWidth + 40;
         const textWidth = canvas.width - imageWidth - 80;
         
-        // Title with theme color
+        // Draw title with theme color
         ctx.fillStyle = theme.colors.primary;
-        ctx.font = 'bold 64px Arial, Inter, sans-serif';
+        ctx.font = 'bold 64px Arial, sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        console.log('Drawing title card text:', { title, description, date, theme: selectedTheme });
+        
+        console.log('🎨 Drawing title card text:', { 
+          title, 
+          description, 
+          date, 
+          primaryColor: theme.colors.primary,
+          textColor: theme.colors.text 
+        });
         
         const wrapText = (text: string, maxWidth: number, lineHeight: number, startY: number) => {
+          if (!text || text.trim() === '') return startY;
+          
           const words = text.split(' ');
           let line = '';
           let y = startY;
@@ -170,6 +184,7 @@ const Index = () => {
             
             if (metrics.width > maxWidth && i > 0) {
               ctx.fillText(line, textX, y);
+              console.log('📝 Drew text line:', line, 'at y:', y);
               line = words[i] + ' ';
               y += lineHeight;
             } else {
@@ -177,6 +192,7 @@ const Index = () => {
             }
           }
           ctx.fillText(line, textX, y);
+          console.log('📝 Drew text line:', line, 'at y:', y);
           return y + lineHeight;
         };
         
