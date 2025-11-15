@@ -21,7 +21,7 @@ export interface TextOverlay {
 export interface MediaItem {
   id: string;
   file: File;
-  type: "image" | "video" | "titleCard";
+  type: "image" | "video" | "titleCard" | "logoCard";
   duration: number;
   thumbnail?: string;
   focalPoint?: { x: number; y: number };
@@ -94,7 +94,8 @@ export const Timeline = ({
 
   const globeDuration = 3; // 3 seconds for globe animation
   const titleCardDuration = 4; // 4 seconds for title card
-  const specialItems = (location ? 1 : 0) + (items.some(i => i.type === "titleCard") ? 1 : 0);
+  const logoCardDuration = 2; // 2 seconds for logo card
+  const specialItems = (location ? 1 : 0) + (items.some(i => i.type === "titleCard") ? 1 : 0) + (items.some(i => i.type === "logoCard") ? 1 : 0);
   const totalItems = items.length + specialItems;
   const baseDuration = items.reduce((acc, item) => acc + item.duration, 0);
   const totalDuration = baseDuration + (location ? globeDuration : 0);
@@ -168,7 +169,7 @@ export const Timeline = ({
             </div>
           </div>
         ))}
-        {items.filter(item => item.type !== "titleCard").map((item, index) => (
+        {items.filter(item => item.type !== "titleCard" && item.type !== "logoCard").map((item, index) => (
           <div
             key={item.id}
             draggable
@@ -279,6 +280,35 @@ export const Timeline = ({
             >
               <X className="w-4 h-4" />
             </Button>
+          </div>
+        ))}
+        
+        {/* Logo Card Item - Always at the end */}
+        {items.filter(i => i.type === "logoCard").map((item) => (
+          <div key={item.id} className="flex items-center gap-3 p-3 bg-gradient-to-r from-primary/20 to-accent/20 rounded-lg border border-primary/50">
+            <div className="w-5 h-5 flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </div>
+            <div className="w-16 h-16 bg-muted rounded overflow-hidden flex-shrink-0">
+              {item.thumbnail && (
+                <img
+                  src={item.thumbnail}
+                  alt="Logo card"
+                  className="w-full h-full object-contain p-2"
+                />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">🎬 SnapMemo Logo</p>
+              <p className="text-xs text-muted-foreground">Closing card</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-primary">{item.duration} sec</span>
+            </div>
           </div>
         ))}
       </div>

@@ -550,6 +550,47 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
         
         renderTitleCard();
       };
+    } else if (item.type === "logoCard") {
+      // Handle logo card - simple centered rendering
+      const img = new Image();
+      const blobUrl = URL.createObjectURL(item.file);
+      blobUrlsRef.current.push(blobUrl);
+      img.src = blobUrl;
+      
+      img.onload = () => {
+        console.log('Logo card loaded:', currentIndex);
+        
+        // Set up continuous rendering for logo card
+        const renderLogoCard = () => {
+          // Cancel any previous animation from old image first
+          if (imageAnimationRef.current) {
+            cancelAnimationFrame(imageAnimationRef.current);
+          }
+          
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw white background
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw logo centered with contain fit
+          const scale = Math.min(
+            (canvas.width * 0.5) / img.width,
+            (canvas.height * 0.5) / img.height
+          );
+          const scaledWidth = img.width * scale;
+          const scaledHeight = img.height * scale;
+          const x = (canvas.width - scaledWidth) / 2;
+          const y = (canvas.height - scaledHeight) / 2;
+          
+          ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+          
+          // Keep rendering continuously
+          imageAnimationRef.current = requestAnimationFrame(renderLogoCard);
+        };
+        
+        renderLogoCard();
+      };
     } else if (item.type === "video") {
       const video = document.createElement("video");
       const blobUrl = URL.createObjectURL(item.file);
@@ -814,6 +855,41 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
         const y = (canvas.height - img.height * scale) / 2;
         ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
       }
+    } else if (firstItem.type === "titleCard" || firstItem.type === "logoCard") {
+      // Handle title card or logo card
+      const img = new Image();
+      const blobUrl = URL.createObjectURL(firstItem.file);
+      blobUrlsRef.current.push(blobUrl);
+      img.src = blobUrl;
+      
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        if (firstItem.type === "logoCard") {
+          // White background for logo card
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw logo centered with contain fit
+          const scale = Math.min(
+            (canvas.width * 0.5) / img.width,
+            (canvas.height * 0.5) / img.height
+          );
+          const scaledWidth = img.width * scale;
+          const scaledHeight = img.height * scale;
+          const x = (canvas.width - scaledWidth) / 2;
+          const y = (canvas.height - scaledHeight) / 2;
+          ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+        } else {
+          // Title card - full display
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+          const x = (canvas.width - img.width * scale) / 2;
+          const y = (canvas.height - img.height * scale) / 2;
+          ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+        }
+      };
     } else if (firstItem.type === "video") {
       const video = document.createElement("video");
       const blobUrl = URL.createObjectURL(firstItem.file);

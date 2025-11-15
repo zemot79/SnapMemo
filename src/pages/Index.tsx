@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ImageUploader } from "@/components/ImageUploader";
@@ -15,6 +15,7 @@ import { TextOverlayEditor } from "@/components/TextOverlayEditor";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import logoImage from "@/assets/logo.png";
 const steps: Step[] = [{
   id: 1,
   title: "Title",
@@ -160,6 +161,37 @@ const Index = () => {
       img.src = URL.createObjectURL(firstImage);
     });
   }, []);
+  
+  const createLogoCard = useCallback(async (): Promise<MediaItem> => {
+    return new Promise((resolve) => {
+      fetch(logoImage)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], 'snapmemo-logo.png', { type: 'image/png' });
+          const logoCard: MediaItem = {
+            id: 'logo-card',
+            file,
+            type: 'logoCard',
+            duration: 2,
+            thumbnail: logoImage,
+          };
+          resolve(logoCard);
+        });
+    });
+  }, []);
+
+  // Automatically add logo card at the end when there are media items
+  useEffect(() => {
+    const hasLogoCard = mediaItems.some(item => item.type === 'logoCard');
+    const hasOtherMedia = mediaItems.some(item => item.type === 'image' || item.type === 'video');
+    
+    if (!hasLogoCard && hasOtherMedia) {
+      createLogoCard().then(logoCard => {
+        setMediaItems(prev => [...prev, logoCard]);
+      });
+    }
+  }, [mediaItems, createLogoCard]);
+  
   const handleImagesAdded = useCallback(async (files: File[]) => {
     const newItems: MediaItem[] = files.map(file => ({
       id: Math.random().toString(36).substr(2, 9),
@@ -176,6 +208,9 @@ const Index = () => {
         // Keep titleCard first if it exists
         if (a.type === 'titleCard') return -1;
         if (b.type === 'titleCard') return 1;
+        // Keep logoCard last if it exists
+        if (a.type === 'logoCard') return 1;
+        if (b.type === 'logoCard') return -1;
         return a.file.lastModified - b.file.lastModified;
       });
       return sorted;
@@ -328,7 +363,15 @@ const Index = () => {
       if (successfulItems.length > 0) {
         setMediaItems(prev => {
           const combined = [...prev, ...successfulItems];
-          return combined.sort((a, b) => a.file.lastModified - b.file.lastModified);
+          return combined.sort((a, b) => {
+            // Keep titleCard first if it exists
+            if (a.type === 'titleCard') return -1;
+            if (b.type === 'titleCard') return 1;
+            // Keep logoCard last if it exists
+            if (a.type === 'logoCard') return 1;
+            if (b.type === 'logoCard') return -1;
+            return a.file.lastModified - b.file.lastModified;
+          });
         });
       }
       
@@ -351,11 +394,23 @@ const Index = () => {
     }
   }, []);
   const handleRemove = useCallback((id: string) => {
+    // Prevent removing the logo card
+    const itemToRemove = mediaItems.find(item => item.id === id);
+    if (itemToRemove?.type === 'logoCard') {
+      toast.error("Logo card cannot be removed");
+      return;
+    }
     setMediaItems(prev => prev.filter(item => item.id !== id));
     toast.success("Item removed");
-  }, []);
+  }, [mediaItems]);
   const handleReorder = useCallback((fromIndex: number, toIndex: number) => {
     setMediaItems(prev => {
+      // Prevent reordering the logo card
+      if (prev[fromIndex]?.type === 'logoCard' || prev[toIndex]?.type === 'logoCard') {
+        toast.error("Logo card cannot be reordered");
+        return prev;
+      }
+      
       const newItems = [...prev];
       const [removed] = newItems.splice(fromIndex, 1);
       newItems.splice(toIndex, 0, removed);
