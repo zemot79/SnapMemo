@@ -12,6 +12,7 @@ import { ExportPanel, ExportSettings } from "@/components/ExportPanel";
 import { VideoTitleStep } from "@/components/VideoTitleStep";
 import { Stepper, Step } from "@/components/Stepper";
 import { TextOverlayEditor } from "@/components/TextOverlayEditor";
+import { ThemeSelector } from "@/components/ThemeSelector";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
@@ -619,6 +620,12 @@ const Index = () => {
                 </div>
               </div>
               
+              {/* Color Theme Section */}
+              <ThemeSelector 
+                selectedTheme={selectedTheme}
+                onThemeChange={setSelectedTheme}
+              />
+              
               {/* Timeline Section */}
               <div className="bg-card rounded-lg border border-border p-6">
                 <Timeline 
@@ -629,8 +636,6 @@ const Index = () => {
                   onKenBurnsChange={handleKenBurnsChange}
                   onTextOverlayClick={handleTextOverlayClick}
                   location={videoLocation}
-                  selectedTheme={selectedTheme}
-                  onThemeChange={setSelectedTheme}
                 />
               </div>
 
