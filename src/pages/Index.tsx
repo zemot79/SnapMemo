@@ -187,10 +187,16 @@ const Index = () => {
     
     if (!hasLogoCard && hasOtherMedia) {
       createLogoCard().then(logoCard => {
-        setMediaItems(prev => [...prev, logoCard]);
+        setMediaItems(prev => {
+          // Double check we don't already have a logo card
+          if (prev.some(item => item.type === 'logoCard')) {
+            return prev;
+          }
+          return [...prev, logoCard];
+        });
       });
     }
-  }, [mediaItems, createLogoCard]);
+  }, [mediaItems.filter(item => item.type !== 'logoCard').length, createLogoCard]); // Only trigger when non-logo items change
   
   const handleImagesAdded = useCallback(async (files: File[]) => {
     const newItems: MediaItem[] = files.map(file => ({
