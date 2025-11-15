@@ -44,6 +44,7 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
   const [errorMessage, setErrorMessage] = useState<string>("");
   const isRenderingRef = useRef<boolean>(false);
   const [isDragging, setIsDragging] = useState(false);
+  const isDraggingRef = useRef(false);
   const progressBarRef = useRef<HTMLDivElement>(null);
   
   // Globe animation state
@@ -1023,7 +1024,7 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
   };
 
   const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!progressBarRef.current || isDragging) return;
+    if (!progressBarRef.current || isDraggingRef.current) return;
     
     const rect = progressBarRef.current.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
@@ -1054,6 +1055,7 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    isDraggingRef.current = true;
     setIsDragging(true);
   };
 
@@ -1077,6 +1079,7 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
     };
 
     const handleMouseUp = () => {
+      isDraggingRef.current = false;
       setIsDragging(false);
     };
 
