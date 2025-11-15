@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import logoImage from "@/assets/logo.png";
+import { getThemeById } from "@/lib/themes";
 const steps: Step[] = [{
   id: 1,
   title: "Title",
@@ -54,6 +55,7 @@ const Index = () => {
   const [audioFiles, setAudioFiles] = useState<File[]>([]);
   const [transitions, setTransitions] = useState<string[]>(["fade"]);
   const [textOverlayItemId, setTextOverlayItemId] = useState<string | null>(null);
+  const [selectedTheme, setSelectedTheme] = useState("classic");
   const handleTitleNext = useCallback((title: string, description: string, location: string, dateFrom: string, dateTo: string) => {
     setVideoTitle(title);
     setVideoDescription(description);
@@ -65,6 +67,7 @@ const Index = () => {
   }, []);
   
   const createTitleCard = useCallback(async (firstImage: File, title: string, description: string, date: string): Promise<MediaItem> => {
+    const theme = getThemeById(selectedTheme);
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       canvas.width = 1920;
@@ -87,16 +90,24 @@ const Index = () => {
         
         ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
         
-        // Draw white background on right 1/3
-        ctx.fillStyle = '#fafafa';
+        // Draw background on right 1/3 using theme colors
+        if (theme.gradient) {
+          // For gradient themes, create gradient background
+          const gradient = ctx.createLinearGradient(imageWidth, 0, canvas.width, canvas.height);
+          gradient.addColorStop(0, theme.colors.background);
+          gradient.addColorStop(1, theme.colors.accent);
+          ctx.fillStyle = gradient;
+        } else {
+          ctx.fillStyle = theme.colors.background;
+        }
         ctx.fillRect(imageWidth, 0, canvas.width - imageWidth, canvas.height);
         
         // Draw text on right side
         const textX = imageWidth + 40;
         const textWidth = canvas.width - imageWidth - 80;
         
-        // Title with gold/tan color
-        ctx.fillStyle = '#b08d62';
+        // Title with theme color
+        ctx.fillStyle = theme.colors.primary;
         ctx.font = 'bold 64px Inter, sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
@@ -128,13 +139,13 @@ const Index = () => {
         // Description
         currentY += 60;
         ctx.font = '36px Inter, sans-serif';
-        ctx.fillStyle = '#666666';
+        ctx.fillStyle = theme.colors.text;
         currentY = wrapText(description, textWidth, 50, currentY);
         
         // Date
         currentY += 80;
         ctx.font = '32px Inter, sans-serif';
-        ctx.fillStyle = '#999999';
+        ctx.fillStyle = theme.colors.secondary;
         ctx.fillText(date, textX, currentY);
         
         // Convert canvas to blob and create MediaItem
@@ -160,7 +171,7 @@ const Index = () => {
       
       img.src = URL.createObjectURL(firstImage);
     });
-  }, []);
+  }, [selectedTheme]);
   
   const createLogoCard = useCallback(async (): Promise<MediaItem> => {
     return new Promise((resolve) => {
@@ -617,7 +628,9 @@ const Index = () => {
                   onDurationChange={handleDurationChange}
                   onKenBurnsChange={handleKenBurnsChange}
                   onTextOverlayClick={handleTextOverlayClick}
-                  location={videoLocation} 
+                  location={videoLocation}
+                  selectedTheme={selectedTheme}
+                  onThemeChange={setSelectedTheme}
                 />
               </div>
 
@@ -694,7 +707,8 @@ const Index = () => {
                     videoTitle={videoTitle} 
                     videoDescription={videoDescription} 
                     videoDate={videoDate} 
-                    canvasRef={canvasRef} 
+                    canvasRef={canvasRef}
+                    selectedTheme={selectedTheme}
                   />
                 </div>
                 
@@ -728,6 +742,7 @@ const Index = () => {
             overlays={item.textOverlays || []}
             onSave={(overlays) => handleTextOverlaySave(item.id, overlays)}
             onClose={() => setTextOverlayItemId(null)}
+            selectedTheme={selectedTheme}
           />
         ) : null;
       })()}

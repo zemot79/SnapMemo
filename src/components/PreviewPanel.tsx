@@ -16,6 +16,7 @@ interface PreviewPanelProps {
   videoDate?: string;
   canvasRef?: React.RefObject<HTMLCanvasElement>;
   onPlaybackComplete?: () => void;
+  selectedTheme?: string;
 }
 
 export interface PreviewPanelRef {
@@ -23,7 +24,7 @@ export interface PreviewPanelRef {
   resetPlayback: () => void;
 }
 
-export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ items, audioFile, transitions = ["fade"], location, videoTitle, videoDescription, videoDate, canvasRef: externalCanvasRef, onPlaybackComplete }, ref) => {
+export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ items, audioFile, transitions = ["fade"], location, videoTitle, videoDescription, videoDate, canvasRef: externalCanvasRef, onPlaybackComplete, selectedTheme = "classic" }, ref) => {
   const internalCanvasRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = externalCanvasRef || internalCanvasRef;
   const videoRef = useRef<HTMLVideoElement | null>(null);

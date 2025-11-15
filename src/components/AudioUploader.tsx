@@ -1,8 +1,10 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { Upload, Music, X, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { BackgroundMusicLibrary } from "./BackgroundMusicLibrary";
 
 interface AudioUploaderProps {
   audios: File[];
@@ -11,6 +13,8 @@ interface AudioUploaderProps {
 }
 
 export const AudioUploader = ({ audios, onAudioAdded, onAudioRemoved }: AudioUploaderProps) => {
+  const [activeTab, setActiveTab] = useState("upload");
+
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -85,41 +89,54 @@ export const AudioUploader = ({ audios, onAudioAdded, onAudioRemoved }: AudioUpl
         </div>
       )}
 
-      <div
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        className="border-2 border-dashed border-primary/30 rounded-lg p-12 text-center hover:border-primary/60 transition-colors cursor-pointer bg-card/50 backdrop-blur"
-      >
-        <input
-          type="file"
-          accept="audio/*"
-          onChange={handleFileInput}
-          className="hidden"
-          id="audio-input"
-        />
-        <label htmlFor="audio-input" className="cursor-pointer">
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex gap-4">
-              <div className="p-4 rounded-full bg-primary/10">
-                <Plus className="w-8 h-8 text-primary" />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="upload">Upload Your Own</TabsTrigger>
+          <TabsTrigger value="library">Browse Free Music</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="upload" className="mt-4">
+          <div
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            className="border-2 border-dashed border-primary/30 rounded-lg p-12 text-center hover:border-primary/60 transition-colors cursor-pointer bg-card/50 backdrop-blur"
+          >
+            <input
+              type="file"
+              accept="audio/*"
+              onChange={handleFileInput}
+              className="hidden"
+              id="audio-input"
+            />
+            <label htmlFor="audio-input" className="cursor-pointer">
+              <div className="flex flex-col items-center gap-4">
+                <div className="flex gap-4">
+                  <div className="p-4 rounded-full bg-primary/10">
+                    <Plus className="w-8 h-8 text-primary" />
+                  </div>
+                  <div className="p-4 rounded-full bg-primary/10">
+                    <Music className="w-8 h-8 text-primary" />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-foreground mb-2">
+                    {audios.length === 0 
+                      ? "Drag background music here or click to browse"
+                      : "Add more background music"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Supported formats: MP3, WAV, OGG
+                  </p>
+                </div>
               </div>
-              <div className="p-4 rounded-full bg-primary/10">
-                <Music className="w-8 h-8 text-primary" />
-              </div>
-            </div>
-            <div>
-              <p className="text-lg font-semibold text-foreground mb-2">
-                {audios.length === 0 
-                  ? "Drag background music here or click to browse"
-                  : "Add more background music"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Supported formats: MP3, WAV, OGG
-              </p>
-            </div>
+            </label>
           </div>
-        </label>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="library" className="mt-4">
+          <BackgroundMusicLibrary onTrackSelected={onAudioAdded} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

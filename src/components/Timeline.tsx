@@ -5,6 +5,7 @@ import { Switch } from "./ui/switch";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useState } from "react";
+import { ThemeSelector } from "./ThemeSelector";
 
 export interface TextOverlay {
   id: string;
@@ -46,6 +47,8 @@ interface TimelineProps {
   onKenBurnsChange?: (id: string, kenBurns: { enabled: boolean; effect: "zoomIn" | "zoomOut" | "panLeft" | "panRight" }) => void;
   onTextOverlayClick?: (id: string) => void;
   location?: string;
+  selectedTheme?: string;
+  onThemeChange?: (themeId: string) => void;
 }
 
 export const Timeline = ({
@@ -56,6 +59,8 @@ export const Timeline = ({
   onKenBurnsChange,
   onTextOverlayClick,
   location,
+  selectedTheme = "classic",
+  onThemeChange,
 }: TimelineProps) => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -102,6 +107,10 @@ export const Timeline = ({
 
   return (
     <div className="space-y-2">
+      {onThemeChange && (
+        <ThemeSelector selectedTheme={selectedTheme} onThemeChange={onThemeChange} />
+      )}
+      
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Clock className="w-5 h-5 text-primary" />
