@@ -275,8 +275,6 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
         // Don't cancel previous animation here - just let new one overwrite it
         // This prevents black screen flashes between images
         
-        const focalPoint = item.focalPoint;
-        
         // Save current canvas state for transition
         if (currentIndex > 0 && !previousImageRef.current) {
           previousImageRef.current = document.createElement('canvas');
@@ -342,9 +340,13 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
         
         // Check for Ken Burns or focal point animation
         const kenBurns = item.kenBurns;
-        const shouldAnimateKenBurns = kenBurns?.enabled && !focalPoint;
+        const focalPoints = item.focalPoint;
+        const hasFocalPoint1 = focalPoints && focalPoints.length > 0;
+        const hasFocalPoint2 = focalPoints && focalPoints.length > 1;
+        const shouldAnimateKenBurns = kenBurns?.enabled && hasFocalPoint2;
         
-        if (focalPoint) {
+        if (hasFocalPoint1 && !kenBurns?.enabled) {
+          const focalPoint = focalPoints![0];
           console.log('✅ Starting focal point animation:', focalPoint);
           setLoadingStatus(`Animating image ${currentIndex + 1} with focal point`);
           setErrorMessage("");
@@ -399,12 +401,15 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
           
           animate();
         } else if (shouldAnimateKenBurns) {
-          console.log('✅ Starting Ken Burns animation:', kenBurns.effect);
-          setLoadingStatus(`Ken Burns effect on image ${currentIndex + 1}`);
+          const targetPoint = focalPoints![1];
+          console.log('✅ Starting Ken Burns zoom to point 2:', targetPoint);
+          setLoadingStatus(`Ken Burns zoom on image ${currentIndex + 1}`);
           setErrorMessage("");
           
           const startTime = Date.now();
           const animationDuration = item.duration * 1000;
+          const startScale = 1;
+          const endScale = 1.5;
           isRenderingRef.current = true;
           
           const animate = () => {
@@ -418,35 +423,24 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
               const progress = Math.min(elapsed / animationDuration, 1);
               const easeProgress = 1 - Math.pow(1 - progress, 3);
               
+              const currentScale = startScale + (endScale - startScale) * easeProgress;
+              
               ctx.clearRect(0, 0, canvas.width, canvas.height);
               ctx.fillStyle = '#000000';
               ctx.fillRect(0, 0, canvas.width, canvas.height);
               
               const baseScale = Math.min(canvas.width / img.width, canvas.height / img.height);
+              const scaledWidth = img.width * baseScale * currentScale;
+              const scaledHeight = img.height * baseScale * currentScale;
               
-              let scale = baseScale;
-              let offsetX = 0;
-              let offsetY = 0;
+              // Convert percentage to actual coordinates
+              const targetX = canvas.width / 2 - (targetPoint.x / 100 * img.width * baseScale * currentScale);
+              const targetY = canvas.height / 2 - (targetPoint.y / 100 * img.height * baseScale * currentScale);
+              const startX = (canvas.width - img.width * baseScale) / 2;
+              const startY = (canvas.height - img.height * baseScale) / 2;
               
-              switch (kenBurns.effect) {
-                case "zoomIn":
-                  scale = baseScale * (1 + progress * 0.3);
-                  break;
-                case "zoomOut":
-                  scale = baseScale * (1.3 - progress * 0.3);
-                  break;
-                case "panLeft":
-                  offsetX = -(progress * 200);
-                  break;
-                case "panRight":
-                  offsetX = progress * 200;
-                  break;
-              }
-              
-              const scaledWidth = img.width * scale;
-              const scaledHeight = img.height * scale;
-              const x = (canvas.width - scaledWidth) / 2 + offsetX;
-              const y = (canvas.height - scaledHeight) / 2 + offsetY;
+              const x = startX + (targetX - startX) * easeProgress;
+              const y = startY + (targetY - startY) * easeProgress;
               
               ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
               drawTextOverlays();

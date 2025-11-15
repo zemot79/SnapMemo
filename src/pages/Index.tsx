@@ -427,12 +427,13 @@ const Index = () => {
   const handleFocalPointChange = useCallback((id: string, focalPoint: {
     x: number;
     y: number;
-  }) => {
+  }[]) => {
     setMediaItems(prev => prev.map(item => item.id === id ? {
       ...item,
       focalPoint
     } : item));
-    toast.success("Focal point set");
+    const pointCount = focalPoint.length;
+    toast.success(`Focal point ${pointCount} set`);
   }, []);
   const handleClipsChange = useCallback((id: string, clips: {
     id: string;
@@ -535,10 +536,10 @@ const Index = () => {
               {getImageCount() > 0 && <div className="bg-card rounded-lg border border-border p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold">
-                      Click on images to set focal point
+                      Click images to set focal points (max 2)
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      💡 Drag elements to reorder
+                      💡 Point 1: Focal zoom | Point 2: Ken Burns target
                     </p>
                   </div>
                   <ImageEditor images={mediaItems.filter(item => item.type === "image")} onRemove={handleRemove} onFocalPointChange={handleFocalPointChange} onReorder={(from, to) => {
