@@ -72,9 +72,9 @@ function Globe({ targetLat, targetLon, onComplete }: { targetLat: number; target
       <mesh ref={globeRef} position={[0, 0, 0]}>
         <sphereGeometry args={[2, 64, 64]} />
         <meshStandardMaterial
-          color="#2563eb"
+          color="#3b82f6"
           roughness={0.7}
-          metalness={0.2}
+          metalness={0.3}
           wireframe={false}
         />
       </mesh>
@@ -86,26 +86,26 @@ function Globe({ targetLat, targetLon, onComplete }: { targetLat: number; target
           color="#60a5fa"
           wireframe={true}
           transparent={true}
-          opacity={0.3}
+          opacity={0.4}
         />
       </mesh>
 
       {/* Location marker */}
       <mesh ref={markerRef}>
-        <sphereGeometry args={[0.08, 16, 16]} />
+        <sphereGeometry args={[0.1, 16, 16]} />
         <meshStandardMaterial
           color="#ef4444"
           emissive="#ef4444"
-          emissiveIntensity={0.5}
+          emissiveIntensity={0.8}
         />
       </mesh>
 
       {/* Ambient light */}
-      <ambientLight intensity={0.4} />
+      <ambientLight intensity={0.5} />
       
       {/* Main light */}
-      <directionalLight position={[5, 3, 5]} intensity={1.5} />
-      <directionalLight position={[-5, -3, -5]} intensity={0.5} />
+      <directionalLight position={[5, 3, 5]} intensity={2} />
+      <directionalLight position={[-5, -3, -5]} intensity={0.8} />
 
       {/* Stars */}
       <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
@@ -115,25 +115,26 @@ function Globe({ targetLat, targetLon, onComplete }: { targetLat: number; target
 
 export const GlobeAnimation = ({ targetLat, targetLon, locationName, onComplete }: GlobeAnimationProps) => {
   return (
-    <div className="relative w-full h-full bg-black">
+    <div className="relative w-full h-full bg-black" style={{ zIndex: 10 }}>
       <Canvas
         camera={{ position: [0, 0, 8], fov: 45 }}
         gl={{ 
           antialias: true, 
-          alpha: true,
+          alpha: false,
           preserveDrawingBuffer: true
         }}
         onCreated={({ gl }) => {
           gl.setClearColor('#000000', 1);
         }}
+        style={{ width: '100%', height: '100%', display: 'block' }}
       >
         <Globe targetLat={targetLat} targetLon={targetLon} onComplete={onComplete} />
       </Canvas>
       
       {/* Location name overlay */}
-      <div className="absolute bottom-8 left-0 right-0 text-center">
-        <div className="inline-block bg-black/70 backdrop-blur-sm px-6 py-3 rounded-full">
-          <p className="text-white text-xl font-semibold">{locationName}</p>
+      <div className="absolute bottom-8 left-0 right-0 text-center z-10">
+        <div className="inline-block bg-black/80 backdrop-blur-sm px-8 py-4 rounded-full border border-white/20">
+          <p className="text-white text-2xl font-bold drop-shadow-lg">{locationName}</p>
         </div>
       </div>
     </div>
