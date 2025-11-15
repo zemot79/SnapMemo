@@ -1087,11 +1087,11 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
                 {showGlobeAnimation 
                   ? "🌍 Location Animation" 
                   : items.length > 0 
-                    ? `${currentIndex + 1} / ${items.length}${currentItem?.type === "video" && currentItem.clips && currentItem.clips.length > 0 ? ` (Clip ${currentClipIndex + 1}/${currentItem.clips.length})` : ""}`
+                    ? `Slide ${currentIndex + 1} / ${items.length}${currentItem?.type === "video" && currentItem.clips && currentItem.clips.length > 0 ? ` (Clip ${currentClipIndex + 1}/${currentItem.clips.length})` : ""}`
                     : "Ready"
                 }
               </span>
-              <span>{progress.toFixed(1)}s / {currentItem?.duration.toFixed(1) || 0}s</span>
+              <span className="font-mono">{progress.toFixed(1)}s / {currentItem?.duration.toFixed(1) || 0}s</span>
             </div>
             
             <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
@@ -1101,9 +1101,9 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
               />
             </div>
             
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Total Video Duration</span>
-              <span className="font-semibold">
+            <div className="flex items-center justify-between text-sm text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
+              <span className="font-medium">Total Video Duration</span>
+              <span className="font-mono font-semibold text-primary">
                 {(() => {
                   const globeDuration = location ? 3 : 0;
                   const baseDuration = items.reduce((acc, item) => acc + item.duration, 0);
