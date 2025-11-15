@@ -7,6 +7,18 @@ import { geocodeLocation, Coordinates } from "@/lib/geocoding";
 import { toast } from "sonner";
 import { getThemeById } from "@/lib/themes";
 
+export interface TitleCardSettings {
+  titleFontSize: number;
+  titleColor: string;
+  titleY: number;
+  descriptionFontSize: number;
+  descriptionColor: string;
+  descriptionY: number;
+  dateFontSize: number;
+  dateColor: string;
+  dateY: number;
+}
+
 interface PreviewPanelProps {
   items: MediaItem[];
   audioFile?: File | null;
@@ -18,6 +30,8 @@ interface PreviewPanelProps {
   canvasRef?: React.RefObject<HTMLCanvasElement>;
   onPlaybackComplete?: () => void;
   selectedTheme?: string;
+  titleCardSettings?: TitleCardSettings;
+  onTitleCardChange?: () => void;
 }
 
 export interface PreviewPanelRef {
@@ -25,7 +39,7 @@ export interface PreviewPanelRef {
   resetPlayback: () => void;
 }
 
-export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ items, audioFile, transitions = ["fade"], location, videoTitle, videoDescription, videoDate, canvasRef: externalCanvasRef, onPlaybackComplete, selectedTheme = "classic" }, ref) => {
+export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ items, audioFile, transitions = ["fade"], location, videoTitle, videoDescription, videoDate, canvasRef: externalCanvasRef, onPlaybackComplete, selectedTheme = "classic", titleCardSettings, onTitleCardChange }, ref) => {
   const internalCanvasRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = externalCanvasRef || internalCanvasRef;
   const theme = getThemeById(selectedTheme);
@@ -112,6 +126,38 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
     ctx.fillText('📍 Location', canvas.width / 2, canvas.height / 2 + 80);
     
   }, [showGlobeAnimation, location]);
+
+  // Helper function to wrap text into lines
+  const wrapTextLines = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+    
+    for (let i = 0; i < words.length; i++) {
+      const testLine = currentLine + words[i] + ' ';
+      const metrics = ctx.measureText(testLine);
+      
+      if (metrics.width > maxWidth && i > 0) {
+        lines.push(currentLine.trim());
+        currentLine = words[i] + ' ';
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine.trim()) {
+      lines.push(currentLine.trim());
+    }
+    
+    return lines;
+  };
+
+  // Re-render when title card settings change
+  useEffect(() => {
+    if (titleCardSettings && items[currentIndex]?.type === "titleCard" && onTitleCardChange) {
+      // Trigger re-render by calling onChange
+      onTitleCardChange();
+    }
+  }, [titleCardSettings, currentIndex, items, onTitleCardChange]);
 
   // Geocode location when component mounts
   useEffect(() => {

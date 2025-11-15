@@ -13,6 +13,7 @@ import { VideoTitleStep } from "@/components/VideoTitleStep";
 import { Stepper, Step } from "@/components/Stepper";
 import { TextOverlayEditor } from "@/components/TextOverlayEditor";
 import { ThemeSelector } from "@/components/ThemeSelector";
+import { TitleCardCustomizer, TitleCardSettings } from "@/components/TitleCardCustomizer";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
@@ -57,6 +58,18 @@ const Index = () => {
   const [transitions, setTransitions] = useState<string[]>(["fade"]);
   const [textOverlayItemId, setTextOverlayItemId] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState("classic");
+  const [titleCardSettings, setTitleCardSettings] = useState<TitleCardSettings>({
+    titleFontSize: 64,
+    titleColor: "#ffffff",
+    titleY: 150,
+    descriptionFontSize: 36,
+    descriptionColor: "#cccccc",
+    descriptionY: 300,
+    dateFontSize: 28,
+    dateColor: "#aaaaaa",
+    dateY: 500,
+  });
+  const [titleCardChangeKey, setTitleCardChangeKey] = useState(0);
   const handleTitleNext = useCallback((title: string, description: string, location: string, dateFrom: string, dateTo: string) => {
     setVideoTitle(title);
     setVideoDescription(description);
@@ -784,7 +797,7 @@ const Index = () => {
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-2 space-y-4">
                   <PreviewPanel 
                     ref={previewPanelRef} 
                     items={[
@@ -799,7 +812,16 @@ const Index = () => {
                     videoDate={videoDate} 
                     canvasRef={canvasRef}
                     selectedTheme={selectedTheme}
+                    titleCardSettings={titleCardSettings}
+                    onTitleCardChange={() => setTitleCardChangeKey(prev => prev + 1)}
                   />
+                  
+                  {mediaItems.some(item => item.type === 'titleCard') && (
+                    <TitleCardCustomizer
+                      settings={titleCardSettings}
+                      onChange={setTitleCardSettings}
+                    />
+                  )}
                 </div>
                 
                 <div className="lg:col-span-1">
