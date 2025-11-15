@@ -21,6 +21,7 @@ export interface ExportSettings {
 export const ExportPanel = ({ onExport, disabled, canvasRef, totalDuration = 0 }: ExportPanelProps) => {
   const [format, setFormat] = useState("webm");
   const [quality, setQuality] = useState("high");
+  const [aspectRatio, setAspectRatio] = useState("16:9");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingProgress, setRecordingProgress] = useState(0);
   const fps = 30; // Fixed at 30 FPS
@@ -170,9 +171,22 @@ export const ExportPanel = ({ onExport, disabled, canvasRef, totalDuration = 0 }
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="format">Format</Label>
+          <Label htmlFor="aspectRatio">Format</Label>
+          <Select value={aspectRatio} onValueChange={setAspectRatio}>
+            <SelectTrigger id="aspectRatio">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="4:5">4:5 - Instagram, Facebook</SelectItem>
+              <SelectItem value="16:9">16:9 - TV, Monitor, Mobile landscape</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="fileType">File type</Label>
           <Select value={format} onValueChange={setFormat}>
-            <SelectTrigger id="format">
+            <SelectTrigger id="fileType">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
