@@ -69,6 +69,10 @@ const Index = () => {
   
   const createTitleCard = useCallback(async (firstImage: File, title: string, description: string, date: string): Promise<MediaItem> => {
     const theme = getThemeById(selectedTheme);
+    
+    // Ensure fonts are loaded
+    await document.fonts.ready;
+    
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       canvas.width = 1920;
@@ -109,9 +113,10 @@ const Index = () => {
         
         // Title with theme color
         ctx.fillStyle = theme.colors.primary;
-        ctx.font = 'bold 64px Inter, sans-serif';
+        ctx.font = 'bold 64px Arial, Inter, sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
+        console.log('Drawing title card text:', { title, description, date, theme: selectedTheme });
         
         const wrapText = (text: string, maxWidth: number, lineHeight: number, startY: number) => {
           const words = text.split(' ');
@@ -138,27 +143,33 @@ const Index = () => {
         currentY = wrapText(title, textWidth, 80, currentY);
         
         // Description
-        currentY += 60;
-        ctx.font = '36px Inter, sans-serif';
-        ctx.fillStyle = theme.colors.text;
-        currentY = wrapText(description, textWidth, 50, currentY);
+        if (description) {
+          currentY += 60;
+          ctx.font = '36px Arial, Inter, sans-serif';
+          ctx.fillStyle = theme.colors.text;
+          currentY = wrapText(description, textWidth, 50, currentY);
+        }
         
         // Date
-        currentY += 80;
-        ctx.font = '32px Inter, sans-serif';
-        ctx.fillStyle = theme.colors.secondary;
-        ctx.fillText(date, textX, currentY);
+        if (date) {
+          currentY += 80;
+          ctx.font = '32px Arial, Inter, sans-serif';
+          ctx.fillStyle = theme.colors.secondary;
+          ctx.fillText(date, textX, currentY);
+        }
         
         // Convert canvas to blob and create MediaItem
         canvas.toBlob((blob) => {
           if (blob) {
             const file = new File([blob], 'title-card.png', { type: 'image/png' });
+            const thumbnailUrl = URL.createObjectURL(blob);
+            console.log('✅ Title card created with thumbnail:', thumbnailUrl);
             const titleCard: MediaItem = {
               id: 'title-card',
               file,
               type: 'titleCard',
               duration: 4,
-              thumbnail: URL.createObjectURL(blob),
+              thumbnail: thumbnailUrl,
               metadata: {
                 title,
                 description,
