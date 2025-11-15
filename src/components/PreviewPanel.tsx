@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } f
 import { Play, Pause, RotateCcw } from "lucide-react";
 import { Button } from "./ui/button";
 import { MediaItem, TextOverlay } from "./Timeline";
-import { GlobeAnimation } from "./GlobeAnimation";
+import { EnhancedGlobeAnimation as GlobeAnimation } from "./EnhancedGlobeAnimation";
 import { geocodeLocation, Coordinates } from "@/lib/geocoding";
 import { toast } from "sonner";
 import { getThemeById } from "@/lib/themes";
