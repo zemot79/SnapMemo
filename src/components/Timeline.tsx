@@ -152,12 +152,23 @@ export const Timeline = ({
               </svg>
             </div>
             <div className="w-16 h-16 bg-muted rounded overflow-hidden flex-shrink-0">
-              {item.thumbnail && (
+              {item.thumbnail ? (
                 <img
                   src={item.thumbnail}
                   alt="Title card"
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error('Failed to load title card thumbnail');
+                    e.currentTarget.style.display = 'none';
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Title card thumbnail loaded');
+                  }}
                 />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                  No preview
+                </div>
               )}
             </div>
             <div className="flex-1 min-w-0">
@@ -187,12 +198,23 @@ export const Timeline = ({
           >
             <GripVertical className="w-5 h-5 text-muted-foreground cursor-grab active:cursor-grabbing" />
             <div className="w-16 h-16 bg-muted rounded overflow-hidden flex-shrink-0">
-              {item.thumbnail && (
+              {item.thumbnail ? (
                 <img
                   src={item.thumbnail}
                   alt={item.file.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error('Failed to load thumbnail for:', item.file.name);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                  onLoad={() => {
+                    console.log('✅ Thumbnail loaded:', item.file.name);
+                  }}
                 />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                  No preview
+                </div>
               )}
             </div>
             <div className="flex-1 min-w-0 space-y-2">

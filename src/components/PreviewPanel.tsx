@@ -1186,7 +1186,7 @@ export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(({ it
               className="max-w-full max-h-full object-contain"
             />
             {showGlobeAnimation && coordinates && location && (
-              <div className="absolute inset-0 z-20 w-full h-full pointer-events-none">
+              <div className="absolute inset-0 z-20 w-full h-full" style={{ pointerEvents: 'none' }}>
                 <GlobeAnimation
                   targetLat={coordinates.lat}
                   targetLon={coordinates.lon}
