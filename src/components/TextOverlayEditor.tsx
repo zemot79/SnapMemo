@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Plus, X, Type } from "lucide-react";
 import { toast } from "sonner";
+import { getThemeById } from "@/lib/themes";
 
 interface TextOverlayEditorProps {
   itemId: string;
@@ -14,6 +15,7 @@ interface TextOverlayEditorProps {
   overlays: TextOverlay[];
   onSave: (overlays: TextOverlay[]) => void;
   onClose: () => void;
+  selectedTheme?: string;
 }
 
 export const TextOverlayEditor = ({
@@ -22,8 +24,10 @@ export const TextOverlayEditor = ({
   overlays: initialOverlays,
   onSave,
   onClose,
+  selectedTheme = "classic",
 }: TextOverlayEditorProps) => {
   const [overlays, setOverlays] = useState<TextOverlay[]>(initialOverlays);
+  const theme = getThemeById(selectedTheme);
 
   const addOverlay = () => {
     const newOverlay: TextOverlay = {
@@ -33,8 +37,8 @@ export const TextOverlayEditor = ({
       y: 85,
       fontSize: 48,
       fontFamily: "Inter",
-      color: "#ffffff",
-      backgroundColor: "#000000",
+      color: theme.colors.text,
+      backgroundColor: theme.colors.background,
       opacity: 0.8,
     };
     setOverlays([...overlays, newOverlay]);
@@ -175,30 +179,50 @@ export const TextOverlayEditor = ({
                   />
                 </div>
 
-                <div>
+                <div className="col-span-2">
                   <Label htmlFor={`color-${overlay.id}`}>Text Color</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id={`color-${overlay.id}`}
-                      type="color"
-                      value={overlay.color}
-                      onChange={(e) =>
-                        updateOverlay(overlay.id, { color: e.target.value })
-                      }
-                      className="w-20 h-10 p-1"
-                    />
-                    <Input
-                      value={overlay.color}
-                      onChange={(e) =>
-                        updateOverlay(overlay.id, { color: e.target.value })
-                      }
-                      placeholder="#ffffff"
-                      className="flex-1"
-                    />
+                  <div className="space-y-2">
+                    <div className="flex gap-2 flex-wrap">
+                      {[
+                        { label: "Primary", color: theme.colors.primary },
+                        { label: "Secondary", color: theme.colors.secondary },
+                        { label: "Accent", color: theme.colors.accent },
+                        { label: "White", color: "#ffffff" },
+                        { label: "Black", color: "#000000" },
+                      ].map((preset) => (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => updateOverlay(overlay.id, { color: preset.color })}
+                          className="px-2 py-1 text-xs rounded border border-border hover:bg-secondary transition-colors flex items-center gap-1.5"
+                        >
+                          <div
+                            className="w-3 h-3 rounded-full border"
+                            style={{ backgroundColor: preset.color }}
+                          />
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        id={`color-${overlay.id}`}
+                        type="color"
+                        value={overlay.color}
+                        onChange={(e) => updateOverlay(overlay.id, { color: e.target.value })}
+                        className="w-20 h-10 p-1"
+                      />
+                      <Input
+                        value={overlay.color}
+                        onChange={(e) => updateOverlay(overlay.id, { color: e.target.value })}
+                        placeholder="#ffffff"
+                        className="flex-1"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div>
+                <div className="col-span-2">
                   <Label htmlFor={`bg-${overlay.id}`}>Background Color</Label>
                   <div className="flex gap-2">
                     <Input
