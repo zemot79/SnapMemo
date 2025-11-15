@@ -84,7 +84,48 @@ const Index = () => {
       }
       
       const img = new Image();
+      img.onerror = (error) => {
+        console.error('❌ Failed to load source image for title card:', error);
+        // Create a fallback with just text
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (theme.gradient) {
+          const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+          gradient.addColorStop(0, theme.colors.background);
+          gradient.addColorStop(1, theme.colors.accent);
+          ctx.fillStyle = gradient;
+        } else {
+          ctx.fillStyle = theme.colors.background;
+        }
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw text
+        ctx.fillStyle = theme.colors.primary;
+        ctx.font = 'bold 80px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(title, canvas.width / 2, canvas.height / 2);
+        
+        // Convert to blob anyway
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], 'title-card.png', { type: 'image/png' });
+            const thumbnailUrl = URL.createObjectURL(blob);
+            console.log('✅ Title card created (text only) with thumbnail:', thumbnailUrl);
+            const titleCard: MediaItem = {
+              id: 'title-card',
+              file,
+              type: 'titleCard',
+              duration: 4,
+              thumbnail: thumbnailUrl,
+              metadata: { title, description, date },
+            };
+            resolve(titleCard);
+          }
+        }, 'image/png');
+      };
+      
       img.onload = () => {
+        console.log('✅ Source image loaded for title card');
         // Draw image on left 2/3
         const imageWidth = canvas.width * (2/3);
         const scale = Math.max(imageWidth / img.width, canvas.height / img.height);
@@ -222,6 +263,14 @@ const Index = () => {
   }, [mediaItems.filter(item => item.type !== 'logoCard').length, createLogoCard]); // Only trigger when non-logo items change
   
   const handleImagesAdded = useCallback(async (files: File[]) => {
+    console.log('📸 handleImagesAdded called with', files.length, 'files');
+    console.log('Current state:', { 
+      existingImages: mediaItems.filter(i => i.type === 'image').length,
+      videoTitle,
+      videoDescription,
+      videoDate 
+    });
+    
     const newItems: MediaItem[] = files.map(file => ({
       id: Math.random().toString(36).substr(2, 9),
       file,
@@ -246,12 +295,21 @@ const Index = () => {
     });
     
     // Create title card if this is the first image and we have title data
-    if (mediaItems.filter(i => i.type === 'image').length === 0 && videoTitle && files.length > 0) {
+    const hasNoImages = mediaItems.filter(i => i.type === 'image').length === 0;
+    const shouldCreateTitleCard = hasNoImages && videoTitle && files.length > 0;
+    
+    console.log('Title card check:', { hasNoImages, shouldCreateTitleCard, videoTitle });
+    
+    if (shouldCreateTitleCard) {
+      console.log('🎬 Creating title card...');
       const titleCard = await createTitleCard(files[0], videoTitle, videoDescription, videoDate);
+      console.log('🎬 Title card created:', titleCard);
       setMediaItems(prev => {
         // Remove old title card if exists and add new one at the start
         const withoutOldCard = prev.filter(i => i.type !== 'titleCard');
-        return [titleCard, ...withoutOldCard];
+        const result = [titleCard, ...withoutOldCard];
+        console.log('🎬 Updated mediaItems with title card:', result.map(i => ({ id: i.id, type: i.type })));
+        return result;
       });
       toast.success(`${files.length} images added with title card`);
     } else {

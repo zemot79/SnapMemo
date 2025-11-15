@@ -151,23 +151,28 @@ export const Timeline = ({
                 <polyline points="10 9 9 9 8 9"/>
               </svg>
             </div>
-            <div className="w-16 h-16 bg-muted rounded overflow-hidden flex-shrink-0">
+            <div className="w-16 h-16 bg-muted rounded overflow-hidden flex-shrink-0 relative">
               {item.thumbnail ? (
-                <img
-                  src={item.thumbnail}
-                  alt="Title card"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    console.error('Failed to load title card thumbnail');
-                    e.currentTarget.style.display = 'none';
-                  }}
-                  onLoad={() => {
-                    console.log('✅ Title card thumbnail loaded');
-                  }}
-                />
+                <>
+                  <img
+                    src={item.thumbnail}
+                    alt="Title card"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error('❌ Failed to load title card thumbnail:', item.thumbnail);
+                      e.currentTarget.style.display = 'none';
+                    }}
+                    onLoad={() => {
+                      console.log('✅ Title card thumbnail loaded in timeline:', item.thumbnail?.substring(0, 50));
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-accent/10 flex items-center justify-center text-xs opacity-0 hover:opacity-100 transition-opacity">
+                    📄
+                  </div>
+                </>
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                  No preview
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-2xl">
+                  📄
                 </div>
               )}
             </div>
@@ -197,23 +202,28 @@ export const Timeline = ({
             }`}
           >
             <GripVertical className="w-5 h-5 text-muted-foreground cursor-grab active:cursor-grabbing" />
-            <div className="w-16 h-16 bg-muted rounded overflow-hidden flex-shrink-0">
+            <div className="w-16 h-16 bg-muted rounded overflow-hidden flex-shrink-0 relative">
               {item.thumbnail ? (
-                <img
-                  src={item.thumbnail}
-                  alt={item.file.name}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    console.error('Failed to load thumbnail for:', item.file.name);
-                    e.currentTarget.style.display = 'none';
-                  }}
-                  onLoad={() => {
-                    console.log('✅ Thumbnail loaded:', item.file.name);
-                  }}
-                />
+                <>
+                  <img
+                    src={item.thumbnail}
+                    alt={item.file.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error('❌ Failed to load thumbnail:', item.file.name, item.thumbnail?.substring(0, 50));
+                      e.currentTarget.style.display = 'none';
+                    }}
+                    onLoad={() => {
+                      console.log('✅ Thumbnail loaded in timeline:', item.file.name);
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-primary/5 flex items-center justify-center text-xs opacity-0 hover:opacity-100 transition-opacity">
+                    {item.type === 'video' ? '🎥' : '🖼️'}
+                  </div>
+                </>
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                  No preview
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-2xl">
+                  {item.type === 'video' ? '🎥' : '🖼️'}
                 </div>
               )}
             </div>
