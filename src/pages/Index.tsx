@@ -16,6 +16,7 @@ import { TextOverlayEditor } from "@/components/TextOverlayEditor";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { TitleCardCustomizer, TitleCardSettings } from "@/components/TitleCardCustomizer";
 import { Button } from "@/components/ui/button";
+import { TitleCardPreview } from "@/components/TitleCardPreview";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import logoImage from "@/assets/logo.png";
