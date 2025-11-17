@@ -368,12 +368,15 @@ const Index = () => {
                     </p>
 
                     <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                      <canvas
-                        ref={canvasRef}
-                        width={1920}
-                        height={1080}
-                        className="w-full h-full object-contain"
-                      />
+                 <TitleCardPreview
+  firstImage={mediaItems.find(i => i.type === "image")?.file}
+  title={videoTitle}
+  description={videoDescription}
+  date={videoDate}
+  settings={titleCardSettings}
+  selectedTheme={selectedTheme}
+/>
+
                     </div>
                   </div>
 
