@@ -71,17 +71,17 @@ export const VideoEditor = ({
         el.src = URL.createObjectURL(video.file);
 
         el.onloadedmetadata = () => {
-          setVideoDurations((prev) => ({
-            ...prev,
-            [video.id]: Math.floor(el.duration) || 5,
-          }));
-          URL.revokeObjectURL(el.src);
-        };
+  setVideoDurations((prev) => ({
+    ...prev,
+    [video.id]: Math.floor(el.duration) || 30,
+  }));
+  URL.revokeObjectURL(el.src);
+};
 
         el.onerror = () => {
           setVideoDurations((prev) => ({
             ...prev,
-            [video.id]: 5,
+            [video.id]: 30,
           }));
           URL.revokeObjectURL(el.src);
         };
@@ -189,32 +189,27 @@ export const VideoEditor = ({
             )}
 
             {/* VIDEO PREVIEW */}
-            <div className="relative aspect-[16/12] bg-muted">
-              <video
-                src={
-                  video.file
-                    ? URL.createObjectURL(video.file)
-                    : (video.url as string)
-                }
-                className="w-full h-full object-cover"
-                controls
-                preload="metadata"
-              />
+<div className="relative aspect-[16/12] bg-muted">
+  <video
+    src={
+      video.file
+        ? URL.createObjectURL(video.file)
+        : (video.url as string)
+    }
+    className="w-full h-full object-cover"
+    controls
+    preload="metadata"
+  />
 
-              <Button
-                variant="destructive"
-                size="icon"
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => onRemove(video.id)}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-
-              <div className="absolute bottom-2 left-2 flex items-center gap-2 text-white">
-                <Play className="w-4 h-4" />
-                <span className="text-sm">{duration ? `${duration}s` : "..."}</span>
-              </div>
-            </div>
+  <Button
+    variant="destructive"
+    size="icon"
+    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+    onClick={() => onRemove(video.id)}
+  >
+    <X className="w-4 h-4" />
+  </Button>
+</div>
 
             {/* CONTENT */}
             <div className="p-4 bg-card space-y-4">
