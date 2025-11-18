@@ -100,7 +100,7 @@ export const VideoEditor = ({
     const newClip = {
       id: Math.random().toString(36).substring(2, 10),
       startTime: 0,
-      endTime: Math.min(10, duration),
+      endTime: duration,
     };
 
     onClipsChange(videoId, [...(video.clips || []), newClip]);
