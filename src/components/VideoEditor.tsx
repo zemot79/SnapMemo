@@ -326,20 +326,15 @@ export const VideoEditor = ({
                           <div className="space-y-1">
                             <Label className="text-xs">End (sec)</Label>
                             <Input
-                              type="number"
-                              value={clip.endTime}
-                              onChange={(e) =>
-                                updateClip(
-                                  video.id,
-                                  clip.id,
-                                  "endTime",
-                                  Number(e.target.value)
-                                )
-                              }
-                              min={clip.startTime + 1}
-                              max={duration}
-                              className="h-8"
-                            />
+  type="number"
+  value={clip.startTime}
+  onChange={(e) =>
+    updateClip(video.id, clip.id, "startTime", Number(e.target.value))
+  }
+  min={0}
+  max={clip.endTime - 1}
+  className="h-8"
+/>
                           </div>
                         </div>
                         <span className="text-xs text-muted-foreground min-w-[40px]">
