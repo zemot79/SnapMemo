@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { MediaItem } from "./Timeline";
-import { X, Scissors, Play, Plus, Trash2, GripVertical } from "lucide-react";
+import { X, Scissors, Plus, Trash2, GripVertical } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
@@ -53,38 +53,42 @@ export const VideoEditor = ({
   };
 
   // -------------------------------------------------------
-  //  LOAD VIDEO DURATIONS
+  //  LOAD VIDEO DURATIONS FROM FILE
   // -------------------------------------------------------
   useEffect(() => {
     videos.forEach((video) => {
-      if (!videoDurations[video.id] && video.duration) {
-        setVideoDurations((prev) => ({
-          ...prev,
-          [video.id]: video.duration,
-        }));
-        return;
-      }
+      // ha már van durationünk, nem számoljuk újra
+      if (videoDurations[video.id]) return;
 
-      if (!videoDurations[video.id] && !video.duration) {
+      // ha van file, abból próbáljuk kiolvasni
+      if (video.file) {
         const el = document.createElement("video");
         el.preload = "metadata";
         el.src = URL.createObjectURL(video.file);
 
         el.onloadedmetadata = () => {
-  setVideoDurations((prev) => ({
-    ...prev,
-    [video.id]: Math.floor(el.duration) || 30,
-  }));
-  URL.revokeObjectURL(el.src);
-};
+          const duration =
+            Math.floor(el.duration) || video.duration || 30;
+          setVideoDurations((prev) => ({
+            ...prev,
+            [video.id]: duration,
+          }));
+          URL.revokeObjectURL(el.src);
+        };
 
         el.onerror = () => {
           setVideoDurations((prev) => ({
             ...prev,
-            [video.id]: 30,
+            [video.id]: video.duration || 30,
           }));
           URL.revokeObjectURL(el.src);
         };
+      } else if (video.duration) {
+        // ha valamiért nincs file, de van duration, azt használjuk
+        setVideoDurations((prev) => ({
+          ...prev,
+          [video.id]: video.duration,
+        }));
       }
     });
   }, [videos, videoDurations]);
@@ -94,7 +98,9 @@ export const VideoEditor = ({
   // -------------------------------------------------------
   const addClip = (videoId: string) => {
     const video = videos.find((v) => v.id === videoId);
-    const duration = videoDurations[videoId] || 0;
+    const duration =
+      videoDurations[videoId] || video?.duration || 30;
+
     if (!video || duration === 0) return;
 
     const newClip = {
@@ -109,6 +115,7 @@ export const VideoEditor = ({
   const removeClip = (videoId: string, clipId: string) => {
     const video = videos.find((v) => v.id === videoId);
     if (!video) return;
+
     onClipsChange(
       videoId,
       (video.clips || []).filter((c) => c.id !== clipId)
@@ -124,7 +131,8 @@ export const VideoEditor = ({
     const video = videos.find((v) => v.id === videoId);
     if (!video || !video.clips) return;
 
-    const maxDuration = videoDurations[videoId] || 0;
+    const maxDuration =
+      videoDurations[videoId] || video.duration || 30;
 
     const updated = video.clips.map((clip) => {
       if (clip.id !== clipId) return clip;
@@ -134,7 +142,10 @@ export const VideoEditor = ({
         return { ...clip, startTime: start };
       }
 
-      const end = Math.min(maxDuration, Math.max(value, clip.startTime + 1));
+      const end = Math.min(
+        maxDuration,
+        Math.max(value, clip.startTime + 1)
+      );
       return { ...clip, endTime: end };
     });
 
@@ -158,7 +169,8 @@ export const VideoEditor = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
       {videos.map((video, index) => {
-        const duration = videoDurations[video.id] || 0;
+        const duration =
+          videoDurations[video.id] || video.duration || 0;
         const clips = video.clips || [];
         const total = clips.reduce(
           (acc, c) => acc + (c.endTime - c.startTime),
@@ -189,40 +201,36 @@ export const VideoEditor = ({
             )}
 
             {/* VIDEO PREVIEW */}
-<div className="relative aspect-[16/12] bg-muted">
-  <video
-    src={
-      video.file
-        ? URL.createObjectURL(video.file)
-        : video.url
-    }
-    className="w-full h-full object-cover"
-    controls
-    preload="metadata"
-    onLoadedMetadata={(e) => {
-      const dur = Math.floor(e.currentTarget.duration);
-      setVideoDurations((prev) => ({
-        ...prev,
-        [video.id]: dur,
-      }));
-    }}
-  />
+            <div className="relative aspect-[16/12] bg-muted">
+              {(video.thumbnail || video.file) && (
+                <video
+                  src={
+                    video.thumbnail ||
+                    (video.file
+                      ? URL.createObjectURL(video.file)
+                      : undefined)
+                  }
+                  className="w-full h-full object-cover"
+                  controls
+                  preload="metadata"
+                />
+              )}
 
-  <Button
-    variant="destructive"
-    size="icon"
-    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-    onClick={() => onRemove(video.id)}
-  >
-    <X className="w-4 h-4" />
-  </Button>
-</div>
+              <Button
+                variant="destructive"
+                size="icon"
+                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => onRemove(video.id)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
 
             {/* CONTENT */}
             <div className="p-4 bg-card space-y-4">
               <div>
                 <p className="text-sm font-medium truncate">
-                  {video.file?.name || video.url}
+                  {video.file?.name}
                 </p>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Scissors className="w-3 h-3" />
