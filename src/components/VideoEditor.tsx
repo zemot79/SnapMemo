@@ -177,14 +177,12 @@ export const VideoEditor = ({
 
             {/* Video preview */}
             <div className="relative aspect-video bg-muted">
-              {video.thumbnail && (
-                <video
-                  src={video.thumbnail}
-                  className="w-full h-full object-cover"
-                  controls
-                  preload="metadata"
-                />
-              )}
+        <video
+  src={URL.createObjectURL(video.file)}
+  className="w-full h-full object-cover"
+  controls
+  preload="metadata"
+/>
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <Button
                 variant="destructive"
