@@ -137,8 +137,8 @@ export const VideoEditor = ({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6">
-      {videos.map((video, index) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
+        {videos.map((video, index) => {
         const duration = videoDurations[video.id] || 0;
         const clips = video.clips || [];
         const totalClipDuration = clips.reduce(
@@ -232,12 +232,84 @@ export const VideoEditor = ({
                         <span className="text-xs font-medium text-muted-foreground min-w-[20px]">
                           #{index + 1}
                         </span>
-                        <div className="flex-1 grid grid-cols-2 gap-2">
+                        <div className="flex-1 space-y-2">
+                          {/* Range slider a szakaszhoz */}
                           <div className="space-y-1">
-                            <Label className="text-xs">Start (sec)</Label>
-                            <Input
-                              type="number"
-                              value={clip.startTime}
+                            <Label className="text-xs">Segment (sec)</Label>
+                            <div className="flex flex-col gap-1">
+                              <input
+                                type="range"
+                                min={0}
+                                max={duration}
+                                value={clip.startTime}
+                                onChange={(e) =>
+                                  updateClip(
+                                    video.id,
+                                    clip.id,
+                                    "startTime",
+                                    Number(e.target.value)
+                                  )
+                                }
+                                className="w-full"
+                              />
+                              <input
+                                type="range"
+                                min={0}
+                                max={duration}
+                                value={clip.endTime}
+                                onChange={(e) =>
+                                  updateClip(
+                                    video.id,
+                                    clip.id,
+                                    "endTime",
+                                    Number(e.target.value)
+                                  )
+                                }
+                                className="w-full -mt-1"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Pontos beírás számokkal */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Start (sec)</Label>
+                              <Input
+                                type="number"
+                                value={clip.startTime}
+                                onChange={(e) =>
+                                  updateClip(
+                                    video.id,
+                                    clip.id,
+                                    "startTime",
+                                    Number(e.target.value)
+                                  )
+                                }
+                                min="0"
+                                max={clip.endTime - 1}
+                                className="h-8"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">End (sec)</Label>
+                              <Input
+                                type="number"
+                                value={clip.endTime}
+                                onChange={(e) =>
+                                  updateClip(
+                                    video.id,
+                                    clip.id,
+                                    "endTime",
+                                    Number(e.target.value)
+                                  )
+                                }
+                                min={clip.startTime + 1}
+                                max={duration}
+                                className="h-8"
+                              />
+                            </div>
+                          </div>
+                        </div>
                               onChange={(e) =>
                                 updateClip(
                                   video.id,
@@ -293,7 +365,7 @@ export const VideoEditor = ({
                     className="w-full gap-2"
                   >
                     <Plus className="w-4 h-4" />
-                    Add new clip
+                    Add segment
                   </Button>
                 </div>
               )}
