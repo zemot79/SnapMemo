@@ -244,17 +244,19 @@ const Index = () => {
   }, []);
 
   // VIDEO ADD
-  const handleVideosAdded = useCallback(async (files) => {
-    const items = files.map(file => ({
-      id: Math.random().toString(36).slice(2),
-      file,
-      type: "video",
-      duration: 5,
-      thumbnail: URL.createObjectURL(file),
-      clips: []
-    }));
-    setMediaItems(prev => [...prev, ...items]);
-  }, []);
+const handleVideosAdded = useCallback(async (files: File[]) => {
+  const items = files.map<MediaItem>((file) => ({
+    id: Math.random().toString(36).slice(2),
+    file,
+    type: "video",
+    // alapértelmezett hossz: 30 mp, ha valamiért nem tudjuk kiolvasni
+    duration: 30,
+    // ezt használjuk preview-hoz
+    thumbnail: URL.createObjectURL(file),
+    clips: [],
+  }));
+  setMediaItems((prev) => [...prev, ...items]);
+}, []);
 
   // EXPORT
   const calculateTotalDuration = useCallback(() => {
