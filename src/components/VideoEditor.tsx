@@ -28,9 +28,10 @@ export const VideoEditor = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
-  };
+  // -------------------------------------------------------
+  //  DRAG & DROP VIDEO REORDER
+  // -------------------------------------------------------
+  const handleDragStart = (index: number) => setDraggedIndex(index);
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
@@ -51,7 +52,9 @@ export const VideoEditor = ({
     setDragOverIndex(null);
   };
 
-  // Load video durations
+  // -------------------------------------------------------
+  //  LOAD VIDEO DURATIONS
+  // -------------------------------------------------------
   useEffect(() => {
     videos.forEach((video) => {
       if (!videoDurations[video.id] && video.duration) {
@@ -59,34 +62,39 @@ export const VideoEditor = ({
           ...prev,
           [video.id]: video.duration,
         }));
-      } else if (!videoDurations[video.id] && !video.duration) {
-        const videoElement = document.createElement("video");
-        videoElement.preload = "metadata";
-        videoElement.src = URL.createObjectURL(video.file);
+        return;
+      }
 
-        videoElement.onloadedmetadata = () => {
+      if (!videoDurations[video.id] && !video.duration) {
+        const el = document.createElement("video");
+        el.preload = "metadata";
+        el.src = URL.createObjectURL(video.file);
+
+        el.onloadedmetadata = () => {
           setVideoDurations((prev) => ({
             ...prev,
-            [video.id]: Math.floor(videoElement.duration) || 5,
+            [video.id]: Math.floor(el.duration) || 5,
           }));
-          URL.revokeObjectURL(videoElement.src);
+          URL.revokeObjectURL(el.src);
         };
 
-        videoElement.onerror = () => {
+        el.onerror = () => {
           setVideoDurations((prev) => ({
             ...prev,
             [video.id]: 5,
           }));
-          URL.revokeObjectURL(videoElement.src);
+          URL.revokeObjectURL(el.src);
         };
       }
     });
   }, [videos, videoDurations]);
 
-  // Add segment
+  // -------------------------------------------------------
+  //  SEGMENT HANDLING
+  // -------------------------------------------------------
   const addClip = (videoId: string) => {
-    const duration = videoDurations[videoId] || 0;
     const video = videos.find((v) => v.id === videoId);
+    const duration = videoDurations[videoId] || 0;
     if (!video || duration === 0) return;
 
     const newClip = {
@@ -98,7 +106,6 @@ export const VideoEditor = ({
     onClipsChange(videoId, [...(video.clips || []), newClip]);
   };
 
-  // Remove segment
   const removeClip = (videoId: string, clipId: string) => {
     const video = videos.find((v) => v.id === videoId);
     if (!video) return;
@@ -108,7 +115,6 @@ export const VideoEditor = ({
     );
   };
 
-  // Update segment
   const updateClip = (
     videoId: string,
     clipId: string,
@@ -117,23 +123,27 @@ export const VideoEditor = ({
   ) => {
     const video = videos.find((v) => v.id === videoId);
     if (!video || !video.clips) return;
+
     const maxDuration = videoDurations[videoId] || 0;
 
-    const clips = video.clips.map((clip) => {
+    const updated = video.clips.map((clip) => {
       if (clip.id !== clipId) return clip;
 
       if (field === "startTime") {
-        const startTime = Math.max(0, Math.min(value, clip.endTime - 1));
-        return { ...clip, startTime };
-      } else {
-        const endTime = Math.min(maxDuration, Math.max(value, clip.startTime + 1));
-        return { ...clip, endTime };
+        const start = Math.max(0, Math.min(value, clip.endTime - 1));
+        return { ...clip, startTime: start };
       }
+
+      const end = Math.min(maxDuration, Math.max(value, clip.startTime + 1));
+      return { ...clip, endTime: end };
     });
 
-    onClipsChange(videoId, clips);
+    onClipsChange(videoId, updated);
   };
 
+  // -------------------------------------------------------
+  //  NO VIDEOS
+  // -------------------------------------------------------
   if (videos.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -142,13 +152,16 @@ export const VideoEditor = ({
     );
   }
 
+  // -------------------------------------------------------
+  //  UI RENDER
+  // -------------------------------------------------------
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
       {videos.map((video, index) => {
         const duration = videoDurations[video.id] || 0;
         const clips = video.clips || [];
-        const totalClipDuration = clips.reduce(
-          (acc, clip) => acc + (clip.endTime - clip.startTime),
+        const total = clips.reduce(
+          (acc, c) => acc + (c.endTime - c.startTime),
           0
         );
 
@@ -168,22 +181,26 @@ export const VideoEditor = ({
                 : ""
             }`}
           >
-            {/* Draggable icon */}
+            {/* DRAG HANDLE */}
             {onReorder && (
               <div className="absolute top-2 left-2 z-10 p-1 bg-background/80 rounded cursor-grab active:cursor-grabbing">
                 <GripVertical className="w-4 h-4 text-muted-foreground" />
               </div>
             )}
 
-            {/* Video preview */}
-            <div className="relative aspect-video bg-muted">
-        <video
-  src={URL.createObjectURL(video.file)}
-  className="w-full h-full object-cover"
-  controls
-  preload="metadata"
-/>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            {/* VIDEO PREVIEW */}
+            <div className="relative aspect-[16/12] bg-muted">
+              <video
+                src={
+                  video.file
+                    ? URL.createObjectURL(video.file)
+                    : (video.url as string)
+                }
+                className="w-full h-full object-cover"
+                controls
+                preload="metadata"
+              />
+
               <Button
                 variant="destructive"
                 size="icon"
@@ -193,165 +210,153 @@ export const VideoEditor = ({
                 <X className="w-4 h-4" />
               </Button>
 
-              <div className="absolute bottom-2 left-2 right-2">
-                <div className="flex items-center gap-2 text-white text-sm">
-                  <Play className="w-4 h-4" />
-                  <span>{duration ? `${duration} sec` : "Loading..."}</span>
-                </div>
+              <div className="absolute bottom-2 left-2 flex items-center gap-2 text-white">
+                <Play className="w-4 h-4" />
+                <span className="text-sm">{duration ? `${duration}s` : "..."}</span>
               </div>
             </div>
 
-            {/* Content */}
+            {/* CONTENT */}
             <div className="p-4 bg-card space-y-4">
-              {/* Video filename + clip count */}
               <div>
-                <p className="text-sm font-medium truncate mb-1">
-                  {video.file.name}
+                <p className="text-sm font-medium truncate">
+                  {video.file?.name || video.url}
                 </p>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Scissors className="w-3 h-3" />
-                  Total clips: {totalClipDuration.toFixed(1)} sec ({clips.length} segments)
+                  {total.toFixed(1)} sec ({clips.length} segments)
                 </p>
               </div>
 
-              {/* Clip editor */}
-              {duration > 0 && (
-                <div className="space-y-3">
-                  {/* Timeline */}
-                  <div className="relative h-8 bg-secondary rounded overflow-hidden">
-                    {clips.map((clip) => {
-                      const left = (clip.startTime / duration) * 100;
-                      const width =
-                        ((clip.endTime - clip.startTime) / duration) * 100;
-                      return (
-                        <div
-                          key={clip.id}
-                          className="absolute h-full bg-primary/60 border-x border-primary"
-                          style={{ left: `${left}%`, width: `${width}%` }}
-                        />
-                      );
-                    })}
-                  </div>
+              {/* TIMELINE VISUAL */}
+              <div className="relative h-8 bg-secondary rounded overflow-hidden">
+                {clips.map((clip) => {
+                  const left = (clip.startTime / duration) * 100;
+                  const width =
+                    ((clip.endTime - clip.startTime) / duration) * 100;
+                  return (
+                    <div
+                      key={clip.id}
+                      className="absolute h-full bg-primary/60 border-x border-primary"
+                      style={{ left: `${left}%`, width: `${width}%` }}
+                    />
+                  );
+                })}
+              </div>
 
-                  {/* Clip list */}
-                  <div className="space-y-2">
-                    {clips.map((clip, idx) => (
-                      <div
-                        key={clip.id}
-                        className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg"
-                      >
-                        <span className="text-xs font-medium text-muted-foreground min-w-[20px]">
-                          #{idx + 1}
-                        </span>
+              {/* SEGMENTS */}
+              <div className="space-y-3">
+                {clips.map((clip, idx) => (
+                  <div
+                    key={clip.id}
+                    className="flex items-center gap-2 p-2 bg-secondary/40 rounded-lg"
+                  >
+                    <span className="text-xs min-w-[20px] text-muted-foreground">
+                      #{idx + 1}
+                    </span>
 
-                        <div className="flex-1 space-y-2">
-                          {/* Slider */}
-                          <div className="space-y-1">
-                            <Label className="text-xs">Segment (sec)</Label>
-                            <div className="flex flex-col gap-1">
-                              <input
-                                type="range"
-                                min={0}
-                                max={duration}
-                                value={clip.startTime}
-                                onChange={(e) =>
-                                  updateClip(
-                                    video.id,
-                                    clip.id,
-                                    "startTime",
-                                    Number(e.target.value)
-                                  )
-                                }
-                                className="w-full"
-                              />
-                              <input
-                                type="range"
-                                min={0}
-                                max={duration}
-                                value={clip.endTime}
-                                onChange={(e) =>
-                                  updateClip(
-                                    video.id,
-                                    clip.id,
-                                    "endTime",
-                                    Number(e.target.value)
-                                  )
-                                }
-                                className="w-full -mt-1"
-                              />
-                            </div>
-                          </div>
+                    <div className="flex-1 space-y-2">
+                      {/* SLIDERS */}
+                      <div className="space-y-1">
+                        <Label className="text-xs">Segment (sec)</Label>
+                        <div className="flex flex-col gap-1">
+                          <input
+                            type="range"
+                            min={0}
+                            max={duration}
+                            value={clip.startTime}
+                            onChange={(e) =>
+                              updateClip(
+                                video.id,
+                                clip.id,
+                                "startTime",
+                                Number(e.target.value)
+                              )
+                            }
+                            className="w-full"
+                          />
+                          <input
+                            type="range"
+                            min={0}
+                            max={duration}
+                            value={clip.endTime}
+                            onChange={(e) =>
+                              updateClip(
+                                video.id,
+                                clip.id,
+                                "endTime",
+                                Number(e.target.value)
+                              )
+                            }
+                            className="w-full -mt-1"
+                          />
+                        </div>
+                      </div>
 
-                          {/* Numeric inputs */}
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <Label className="text-xs">Start (sec)</Label>
-                              <Input
-                                type="number"
-                                value={clip.startTime}
-                                onChange={(e) =>
-                                  updateClip(
-                                    video.id,
-                                    clip.id,
-                                    "startTime",
-                                    Number(e.target.value)
-                                  )
-                                }
-                                min={0}
-                                max={clip.endTime - 1}
-                                className="h-8"
-                              />
-                            </div>
-
-                            <div className="space-y-1">
-                              <Label className="text-xs">End (sec)</Label>
-                              <Input
-                                type="number"
-                                value={clip.endTime}
-                                onChange={(e) =>
-                                  updateClip(
-                                    video.id,
-                                    clip.id,
-                                    "endTime",
-                                    Number(e.target.value)
-                                  )
-                                }
-                                min={clip.startTime + 1}
-                                max={duration}
-                                className="h-8"
-                              />
-                            </div>
-                          </div>
+                      {/* NUMERIC INPUTS */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Start</Label>
+                          <Input
+                            type="number"
+                            value={clip.startTime}
+                            min={0}
+                            max={clip.endTime - 1}
+                            onChange={(e) =>
+                              updateClip(
+                                video.id,
+                                clip.id,
+                                "startTime",
+                                Number(e.target.value)
+                              )
+                            }
+                            className="h-8"
+                          />
                         </div>
 
-                        <span className="text-xs text-muted-foreground min-w-[40px]">
-                          {(clip.endTime - clip.startTime).toFixed(1)}s
-                        </span>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeClip(video.id, clip.id)}
-                          className="h-8 w-8"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                        <div className="space-y-1">
+                          <Label className="text-xs">End</Label>
+                          <Input
+                            type="number"
+                            value={clip.endTime}
+                            min={clip.startTime + 1}
+                            max={duration}
+                            onChange={(e) =>
+                              updateClip(
+                                video.id,
+                                clip.id,
+                                "endTime",
+                                Number(e.target.value)
+                              )
+                            }
+                            className="h-8"
+                          />
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
 
-                  {/* Add segment */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addClip(video.id)}
-                    className="w-full gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add segment
-                  </Button>
-                </div>
-              )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeClip(video.id, clip.id)}
+                      className="h-8 w-8"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              {/* ADD SEGMENT BUTTON */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => addClip(video.id)}
+                className="w-full gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add segment
+              </Button>
             </div>
           </Card>
         );
