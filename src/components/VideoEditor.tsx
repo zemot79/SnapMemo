@@ -194,11 +194,18 @@ export const VideoEditor = ({
     src={
       video.file
         ? URL.createObjectURL(video.file)
-        : (video.url as string)
+        : video.url
     }
     className="w-full h-full object-cover"
     controls
     preload="metadata"
+    onLoadedMetadata={(e) => {
+      const dur = Math.floor(e.currentTarget.duration);
+      setVideoDurations((prev) => ({
+        ...prev,
+        [video.id]: dur,
+      }));
+    }}
   />
 
   <Button
