@@ -250,7 +250,7 @@ const handleVideosAdded = useCallback(async (files: File[]) => {
     file,
     type: "video",
     // alapértelmezett hossz: 30 mp, ha valamiért nem tudjuk kiolvasni
-    duration: 30,
+    duration: undefined,
     // ezt használjuk preview-hoz
     thumbnail: URL.createObjectURL(file),
     clips: [],
