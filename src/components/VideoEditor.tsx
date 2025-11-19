@@ -238,36 +238,40 @@ export const VideoEditor = ({
                           <div className="space-y-1">
                             <Label className="text-xs">Segment (sec)</Label>
                             <div className="flex flex-col gap-1">
-                              <input
-                                type="range"
-                                min={0}
-                                max={duration}
-                                value={clip.startTime}
-                                onChange={(e) =>
-                                  updateClip(
-                                    video.id,
-                                    clip.id,
-                                    "startTime",
-                                    Number(e.target.value)
-                                  )
-                                }
-                                className="w-full"
-                              />
-                              <input
-                                type="range"
-                                min={0}
-                                max={duration}
-                                value={clip.endTime}
-                                onChange={(e) =>
-                                  updateClip(
-                                    video.id,
-                                    clip.id,
-                                    "endTime",
-                                    Number(e.target.value)
-                                  )
-                                }
-                                className="w-full -mt-1"
-                              />
+                      <input
+  type="range"
+  min={0}
+  max={duration}
+  value={clip.startTime}
+  onMouseDown={(e) => e.stopPropagation()}
+  onClick={(e) => e.stopPropagation()}
+  onChange={(e) =>
+    updateClip(
+      video.id,
+      clip.id,
+      "startTime",
+      Number(e.target.value)
+    )
+  }
+  className="w-full"
+/>
+                             <input
+  type="range"
+  min={0}
+  max={duration}
+  value={clip.endTime}
+  onMouseDown={(e) => e.stopPropagation()}
+  onClick={(e) => e.stopPropagation()}
+  onChange={(e) =>
+    updateClip(
+      video.id,
+      clip.id,
+      "endTime",
+      Number(e.target.value)
+    )
+  }
+  className="w-full -mt-1"
+/>
                             </div>
                           </div>
 
@@ -328,11 +332,11 @@ export const VideoEditor = ({
 
                   {/* Add clip button */}
                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addClip(video.id)}
-                    className="w-full gap-2"
-                  >
+  variant="outline"
+  size="sm"
+  onClick={() => addClip(video.id)}
+  className="w-full gap-2"
+>
                     <Plus className="w-4 h-4" />
                     Add segment
                   </Button>
