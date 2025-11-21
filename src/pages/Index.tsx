@@ -14,6 +14,7 @@ import { VideoTitleStep } from "@/components/VideoTitleStep";
 import { Stepper, Step } from "@/components/Stepper";
 import { TextOverlayEditor } from "@/components/TextOverlayEditor";
 import { ThemeSelector } from "@/components/ThemeSelector";
+import { EditStep } from "@/components/EditStep";
 import { TitleCardCustomizer, TitleCardSettings } from "@/components/TitleCardCustomizer";
 import { Button } from "@/components/ui/button";
 import { TitleCardPreview } from "@/components/TitleCardPreview";
@@ -424,31 +425,23 @@ const handleVideosAdded = useCallback(async (files: File[]) => {
             </div>
           )}
 
-          {/* STEP 4 – TIMELINE */}
+          {/* STEP 4 – EDIT & TIMELINE */}
           {currentStep === 4 && (
-            <div className="max-w-6xl mx-auto space-y-6">
-
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold">Timeline Editing</h2>
-                <p className="text-muted-foreground">Reorder elements and set durations</p>
-              </div>
-
-              <ThemeSelector selectedTheme={selectedTheme} onThemeChange={setSelectedTheme} />
-
-              <div className="bg-card rounded-lg border border-border p-6">
-                <Timeline
-                  items={mediaItems}
-                  onRemove={handleRemove}
-                  onReorder={handleReorder}
-                  onDurationChange={handleDurationChange}
-                  onKenBurnsChange={(id, kenBurns) => {
-                    setMediaItems(prev => prev.map(i => i.id === id ? { ...i, kenBurns } : i));
-                  }}
-                  onTextOverlayClick={(id) => setTextOverlayItemId(id)}
-                  location={videoLocation}
-                />
-              </div>
-            </div>
+            <EditStep
+              items={mediaItems}
+              selectedTheme={selectedTheme}
+              onThemeChange={setSelectedTheme}
+              onRemove={handleRemove}
+              onReorder={handleReorder}
+              onDurationChange={handleDurationChange}
+              onKenBurnsChange={(id, kenBurns) => {
+                setMediaItems((prev) =>
+                  prev.map((i) => (i.id === id ? { ...i, kenBurns } : i))
+                );
+              }}
+              onTextOverlayClick={(id) => setTextOverlayItemId(id)}
+              location={videoLocation}
+            />
           )}
 
           {/* STEP 5 – MUSIC */}
