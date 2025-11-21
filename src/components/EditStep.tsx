@@ -88,7 +88,7 @@ export const EditStep = ({
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       <div className="text-center mb-2">
         <h2 className="text-2xl font-bold">Edit & Timeline</h2>
         <p className="text-muted-foreground">
@@ -96,7 +96,7 @@ export const EditStep = ({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.6fr,1.2fr] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.8fr,1.4fr] gap-8 items-start">
         {/* BAL – TIMELINE + SORREND */}
         <div className="space-y-6">
           <Card className="border-border">
