@@ -123,8 +123,8 @@ export const EditStep = ({
         {/* JOBB – PREVIEW + VEZÉRLŐK */}
         <div className="space-y-4">
           {/* Clip Preview – legfelül, ahogy kérted */}
-          <Card className="border-border">
-            <div className="p-4 pb-0 flex items-center justify-between gap-2">
+                    <Card className="border-border lg:sticky lg:top-4">
+            <div className="p-5 pb-0 flex items-center justify-between gap-2">
               <div>
                 <h3 className="text-base font-semibold flex items-center gap-2">
                   <Play className="w-4 h-4 text-primary" />
