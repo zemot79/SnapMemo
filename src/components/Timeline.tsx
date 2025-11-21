@@ -188,7 +188,7 @@ export const Timeline: React.FC<TimelineProps> = ({
                 .filter(Boolean)
                 .join(" ")}
             >
-              <div className="flex items-start gap-3 p-3">
+              <div className="flex items-start gap-4 p-4">
                 {/* Drag handle */}
                 <div className="pt-2">
                   <div className="p-1 rounded-md bg-muted flex items-center justify-center">
@@ -199,7 +199,7 @@ export const Timeline: React.FC<TimelineProps> = ({
                 {/* Thumbnail + alapinfók */}
                 <div className="flex-1 space-y-2">
                   <div className="flex items-start gap-3">
-                    <div className="w-20 h-14 rounded-md overflow-hidden bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                    <div className="w-28 h-20 rounded-md overflow-hidden bg-muted flex items-center justify-center text-xs text-muted-foreground">
                       {isVideo ? (
                         item.thumbnail || item.url ? (
                           <video
