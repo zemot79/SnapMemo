@@ -466,23 +466,31 @@ const handleVideosAdded = useCallback(async (files: File[]) => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 <div className="lg:col-span-2 space-y-4">
-                  <PreviewPanel
-                    ref={previewPanelRef}
-                    items={[
-                      ...mediaItems.filter(i => i.type === "titleCard"),
-                      ...mediaItems.filter(i => i.type !== "titleCard"),
-                    ]}
-                    audioFile={audioFiles.length > 0 ? audioFiles[0] : null}
-                    transitions={transitions}
-                    location={videoLocation}
-                    videoTitle={videoTitle}
-                    videoDescription={videoDescription}
-                    videoDate={videoDate}
-                    canvasRef={canvasRef}
-                    selectedTheme={selectedTheme}
-                    titleCardSettings={titleCardSettings}
-                    onTitleCardChange={() => setTitleCardChangeKey(k => k + 1)}
-                  />
+              <PreviewPanel
+  ref={previewPanelRef}
+  items={[
+    // 1) Title card mindig elöl
+    ...mediaItems.filter((i) => i.type === "titleCard"),
+
+    // 2) Középen minden más, címkártya és logo nélkül
+    ...mediaItems.filter(
+      (i) => i.type !== "titleCard" && i.type !== "logoCard"
+    ),
+
+    // 3) SnapMemo logo mindig a legvégén
+    ...mediaItems.filter((i) => i.type === "logoCard"),
+  ]}
+  audioFile={audioFiles.length > 0 ? audioFiles[0] : null}
+  transitions={transitions}
+  location={videoLocation}
+  videoTitle={videoTitle}
+  videoDescription={videoDescription}
+  videoDate={videoDate}
+  canvasRef={canvasRef}
+  selectedTheme={selectedTheme}
+  titleCardSettings={titleCardSettings}
+  onTitleCardChange={() => setTitleCardChangeKey((k) => k + 1)}
+/>
                 </div>
 
                 <div className="lg:col-span-1">
