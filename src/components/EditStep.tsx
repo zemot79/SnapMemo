@@ -96,7 +96,7 @@ export const EditStep = ({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.8fr,1.4fr] gap-8 items-start">
+           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.7fr)_minmax(480px,1fr)] gap-8 items-start">
         {/* BAL – TIMELINE + SORREND */}
         <div className="space-y-6">
           <Card className="border-border">
@@ -121,7 +121,8 @@ export const EditStep = ({
         </div>
 
         {/* JOBB – PREVIEW + VEZÉRLŐK */}
-        <div className="space-y-4">
+        <div className="space-y-4 lg:max-h-[80vh] lg:overflow-y-auto">
+
           {/* Clip Preview – legfelül, ahogy kérted */}
                     <Card className="border-border lg:sticky lg:top-4">
             <div className="p-5 pb-0 flex items-center justify-between gap-2">
