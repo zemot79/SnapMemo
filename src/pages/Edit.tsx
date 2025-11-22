@@ -136,7 +136,7 @@ export default function EditPage() {
           </div>
 
           {/* Két oszlopos layout: bal – Preview + Timeline, jobb – Text / Transitions / AI / Themes */}
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-6 items-start">
+       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.7fr)_minmax(480px,1fr)] gap-6 items-start">
             {/* BAL OSZLOP */}
             <div className="space-y-4">
               <ClipPreview
@@ -164,7 +164,8 @@ export default function EditPage() {
             </div>
 
             {/* JOBB OSZLOP */}
-            <div className="space-y-4">
+            {/* JOBB OSZLOP */}
+<div className="space-y-4 lg:max-h-[80vh] lg:overflow-y-auto">
               <TextOverlayEditor
                 clips={overlayClips}
                 onEditClipExternal={(id, _text) => {
