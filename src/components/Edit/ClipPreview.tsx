@@ -3,11 +3,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, RotateCcw } from "lucide-react";
 
-/**
- * TimelineItem
- * A Preview NEM foglalkozik külön a fájlokkal (FFmpeg majd igen),
- * csak a videók / képek / fixed klip hosszokkal és sorrenddel.
- */
 interface TimelineItem {
   id: string;
   type: "title" | "globe" | "image" | "video" | "outro";
@@ -43,6 +38,7 @@ export const ClipPreview = ({ items, onActiveClipChange }: ClipPreviewProps) => 
       if (item.type === "outro") sum += 2;
     }
     setTotalDuration(sum);
+    if (globalTime > sum) setGlobalTime(0);
   }, [items]);
 
   // ---------------------------------------------------------
@@ -69,29 +65,30 @@ export const ClipPreview = ({ items, onActiveClipChange }: ClipPreviewProps) => 
     }
 
     setActiveClipId(active);
-    onActiveClipChange?.(active);
-  }, [globalTime, items]);
+    onActiveClipChange?.(active ?? null);
+  }, [globalTime, items, onActiveClipChange]);
 
   // ---------------------------------------------------------
-  // Play Loop
+  // Play Loop – egyszerű időléptetés
   // ---------------------------------------------------------
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || totalDuration <= 0) return;
+
+    let frameId: number;
 
     const tick = () => {
       setGlobalTime((current) => {
-        const next = current + 0.1;
+        const next = current + 0.05; // kb. 20 fps
         if (next >= totalDuration) {
-          // loop
           return 0;
         }
         return next;
       });
-      requestAnimationFrame(tick);
+      frameId = requestAnimationFrame(tick);
     };
 
-    const id = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(id);
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
   }, [playing, totalDuration]);
 
   // ---------------------------------------------------------
@@ -108,28 +105,30 @@ export const ClipPreview = ({ items, onActiveClipChange }: ClipPreviewProps) => 
       if (item.type === "globe") length = 3;
       if (item.type === "outro") length = 2;
 
+      if (length <= 0) continue;
+
       if (globalTime >= accumulated && globalTime < accumulated + length) {
         const t = globalTime - accumulated;
 
         // Title card → static image
         if (item.type === "title") {
-          return { type: "image", src: "/snapmemo/titlecard.png" };
+          return { type: "image" as const, src: "/snapmemo/titlecard.png" };
         }
 
         // Globe animation placeholder
         if (item.type === "globe") {
-          return { type: "video", src: "/animations/globe.mp4", start: 0, time: t };
+          return { type: "video" as const, src: "/animations/globe.mp4", time: t };
         }
 
         // Outro logo
         if (item.type === "outro") {
-          return { type: "image", src: "/snapmemo/outro.png" };
+          return { type: "image" as const, src: "/snapmemo/outro.png" };
         }
 
         // Image clip
         if (item.type === "image") {
-          if (item.file) return { type: "image", src: URL.createObjectURL(item.file) };
-          if (item.url) return { type: "image", src: item.url };
+          if (item.file) return { type: "image" as const, src: URL.createObjectURL(item.file) };
+          if (item.url) return { type: "image" as const, src: item.url };
         }
 
         // Video clip
@@ -140,9 +139,8 @@ export const ClipPreview = ({ items, onActiveClipChange }: ClipPreviewProps) => 
             : item.url ?? "";
 
           return {
-            type: "video",
+            type: "video" as const,
             src,
-            start,
             time: start + t,
           };
         }
@@ -155,6 +153,14 @@ export const ClipPreview = ({ items, onActiveClipChange }: ClipPreviewProps) => 
   };
 
   const currentFrame = resolveCurrentFrame();
+
+  // Szinkronizáljuk a videó currentTime-et a számolt idővel
+  useEffect(() => {
+    if (!currentFrame || currentFrame.type !== "video") return;
+    if (!videoRef.current) return;
+
+    videoRef.current.currentTime = currentFrame.time;
+  }, [currentFrame]);
 
   // ---------------------------------------------------------
   // Handle scrub
@@ -182,23 +188,15 @@ export const ClipPreview = ({ items, onActiveClipChange }: ClipPreviewProps) => 
             ref={videoRef}
             src={currentFrame.src}
             className="w-full h-full object-cover"
-            autoPlay
             muted
-            onLoadedMetadata={() => {
-              if (videoRef.current) {
-                videoRef.current.currentTime = currentFrame.time;
-              }
-            }}
-            onTimeUpdate={() => {
-              if (videoRef.current && playing) {
-                // Keep video synced to global timeline
-                const fpsLockedTime = currentFrame.time;
-                if (Math.abs(videoRef.current.currentTime - fpsLockedTime) > 0.2) {
-                  videoRef.current.currentTime = fpsLockedTime;
-                }
-              }
-            }}
+            autoPlay={playing}
           />
+        )}
+
+        {!currentFrame && (
+          <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+            No clips to preview yet.
+          </div>
         )}
       </div>
 
@@ -206,7 +204,7 @@ export const ClipPreview = ({ items, onActiveClipChange }: ClipPreviewProps) => 
       <input
         type="range"
         min={0}
-        max={totalDuration}
+        max={Math.max(totalDuration, 0.1)}
         step={0.1}
         value={globalTime}
         onChange={handleScrub}
@@ -227,7 +225,8 @@ export const ClipPreview = ({ items, onActiveClipChange }: ClipPreviewProps) => 
         </Button>
 
         <Button
-          onClick={() => setPlaying(!playing)}
+          onClick={() => setPlaying((p) => !p)}
+          disabled={totalDuration <= 0}
         >
           {playing ? (
             <>
@@ -243,4 +242,3 @@ export const ClipPreview = ({ items, onActiveClipChange }: ClipPreviewProps) => 
     </Card>
   );
 };
-
