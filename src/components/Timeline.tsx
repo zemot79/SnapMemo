@@ -1,15 +1,23 @@
 import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GripVertical, ImageIcon, VideoIcon, Type, Trash2 } from "lucide-react";
+import {
+  GripVertical,
+  ImageIcon,
+  VideoIcon,
+  Type,
+  MapPin,
+  Trash2,
+} from "lucide-react";
 
 export interface MediaItem {
   id: string;
   type: "image" | "video" | "title" | "location";
   file?: File;
   thumbnail?: string;
-  duration?: number; // images
-  videoLength?: number; // videos
+  url?: string;
+  duration?: number;
+  videoLength?: number;
   location?: string;
 }
 
@@ -19,7 +27,6 @@ interface TimelineProps {
   onReorder: (from: number, to: number) => void;
   onDurationChange: (id: string, seconds: number) => void;
   onTextOverlayClick?: (id: string) => void;
-  location?: string;
 }
 
 export const Timeline = ({
@@ -31,40 +38,24 @@ export const Timeline = ({
 }: TimelineProps) => {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
+  // Drag start
   const startDrag = (index: number) => {
     setDragIndex(index);
   };
 
+  // Drag over
   const onDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
     e.preventDefault();
     if (dragIndex === null || dragIndex === index) return;
-
-    const updated = [...items];
-    const [moved] = updated.splice(dragIndex, 1);
-    updated.splice(index, 0, moved);
 
     onReorder(dragIndex, index);
     setDragIndex(index);
   };
 
+  // Drag end
   const endDrag = () => setDragIndex(null);
 
-  const getTypeLabel = (item: MediaItem) => {
-    switch (item.type) {
-      case "image":
-        return "Image";
-      case "video":
-        return "Video";
-      case "title":
-        return "Title card";
-      case "location":
-        return "Location";
-      default:
-        return "Clip";
-    }
-  };
-
-  const getIcon = (item: MediaItem) => {
+  const iconFor = (item: MediaItem) => {
     switch (item.type) {
       case "image":
         return <ImageIcon className="w-4 h-4" />;
@@ -73,14 +64,29 @@ export const Timeline = ({
       case "title":
         return <Type className="w-4 h-4" />;
       case "location":
-        return <Type className="w-4 h-4" />;
+        return <MapPin className="w-4 h-4" />;
       default:
         return <Type className="w-4 h-4" />;
     }
   };
 
+  const labelFor = (item: MediaItem) => {
+    switch (item.type) {
+      case "image":
+        return "Image";
+      case "video":
+        return "Video";
+      case "title":
+        return "Title Card";
+      case "location":
+        return "Location";
+      default:
+        return "Clip";
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-4 pb-8">
+    <div className="flex flex-col gap-5 pb-12 w-full max-w-[750px]">
       {items.map((item, index) => {
         const dragging = dragIndex === index;
 
@@ -92,85 +98,116 @@ export const Timeline = ({
             onDragOver={(e) => onDragOver(e, index)}
             onDragEnd={endDrag}
             className={[
-              "flex flex-col gap-3 border rounded-2xl p-4 bg-card/80 backdrop-blur-sm transition-all",
-              dragging ? "ring-2 ring-primary shadow-lg scale-[1.01]" : "hover:shadow-md",
+              "flex flex-col gap-4 border rounded-3xl p-6 transition-all bg-card/80 backdrop-blur-sm",
+              dragging
+                ? "ring-2 ring-primary shadow-xl scale-[1.01]"
+                : "hover:shadow-lg",
             ].join(" ")}
           >
-            {/* FEJLÉC – ikon, típus, fájlnév */}
-            <div className="flex items-center gap-3">
+            {/* TOP ROW — icon + type label + filename + delete */}
+            <div className="flex items-center gap-4">
               <GripVertical className="w-4 h-4 text-muted-foreground" />
 
               <div className="flex items-center gap-2 text-sm font-semibold">
-                {getIcon(item)}
-                {getTypeLabel(item)}
+                {iconFor(item)}
+                {labelFor(item)}
               </div>
 
-              <div className="ml-auto text-xs text-muted-foreground truncate max-w-[40%]">
+              <div className="ml-auto text-xs text-muted-foreground truncate max-w-[45%]">
                 {item.file?.name || item.location || "Generated clip"}
               </div>
 
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-red-500 hover:text-red-600"
                 onClick={() => onRemove(item.id)}
+                className="text-red-500 hover:text-red-600"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
 
-            {/* PREVIEW – kép vagy video bélyegkép */}
-            <div className="flex items-center gap-4">
-              <div className="w-32 h-20 rounded-xl overflow-hidden bg-muted">
-                {item.thumbnail ? (
+            {/* PREVIEW BLOCK — 240×160 preview */}
+            <div className="flex items-start gap-6">
+              <div className="w-[240px] h-[160px] bg-muted rounded-xl overflow-hidden flex items-center justify-center shadow-sm">
+                {/* VIDEO preview */}
+                {item.type === "video" && (
+                  <video
+                    src={item.url || item.thumbnail}
+                    className="w-full h-full object-cover"
+                    preload="metadata"
+                    muted
+                  />
+                )}
+
+                {/* IMAGE preview */}
+                {item.type === "image" && item.thumbnail && (
                   <img
                     src={item.thumbnail}
-                    alt="preview"
                     className="w-full h-full object-cover"
+                    alt="preview"
                   />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                    {getTypeLabel(item)}
+                )}
+
+                {/* TITLE / LOCATION */}
+                {(item.type === "title" || item.type === "location") && (
+                  <div className="text-xs text-muted-foreground text-center p-3">
+                    {item.file?.name || item.location || "Title card"}
                   </div>
                 )}
+
+                {/* Fallback */}
+                {!item.thumbnail &&
+                  item.type !== "video" &&
+                  item.type !== "title" && (
+                    <div className="text-xs text-muted-foreground">
+                      preview
+                    </div>
+                  )}
               </div>
 
-              <div className="flex-1 text-xs space-y-1">
+              {/* RIGHT SIDE — metadata + controls */}
+              <div className="flex-1 flex flex-col gap-3 mt-1 text-sm">
+                {/* Metadata row */}
+                <div className="text-muted-foreground text-xs">
+                  {item.type === "image" &&
+                    `Duration: ${item.duration ?? 3}s • ${item.file?.name || ""}`}
+
+                  {item.type === "video" &&
+                    `Video length: ${
+                      item.videoLength ? `${item.videoLength}s` : "Unknown"
+                    } • ${item.file?.name || ""}`}
+                </div>
+
+                {/* Duration slider (images only) */}
                 {item.type === "image" && (
-                  <>
-                    <div className="text-muted-foreground">
-                      Duration: {item.duration}s
-                    </div>
+                  <div className="space-y-1">
                     <input
                       type="range"
                       min={1}
                       max={15}
-                      value={item.duration}
-                      onChange={(e) => onDurationChange(item.id, Number(e.target.value))}
+                      value={item.duration ?? 3}
+                      onChange={(e) =>
+                        onDurationChange(item.id, Number(e.target.value))
+                      }
                       className="w-full accent-primary"
                     />
-                  </>
+                  </div>
                 )}
 
-                {item.type === "video" && (
-                  <div className="text-muted-foreground">
-                    Video length: {item.videoLength ? `${item.videoLength}s` : "Unknown"}
-                  </div>
+                {/* Text overlay button */}
+                {onTextOverlayClick && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-fit text-xs"
+                    onClick={() => onTextOverlayClick(item.id)}
+                  >
+                    Edit text overlay
+                  </Button>
                 )}
               </div>
             </div>
-
-            {/* TEXT OVERLAY BUTTON */}
-            {onTextOverlayClick && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-fit text-xs"
-                onClick={() => onTextOverlayClick(item.id)}
-              >
-                Edit text overlay
-              </Button>
-            )}
           </Card>
         );
       })}
