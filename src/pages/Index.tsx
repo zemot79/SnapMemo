@@ -23,6 +23,33 @@ import { toast } from "sonner";
 import logoImage from "@/assets/logo.png";
 import { getThemeById } from "@/lib/themes";
 
+const getVideoMetadata = (file: File): Promise<{
+  duration: number;
+  width: number;
+  height: number;
+  url: string;
+}> => {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.preload = "metadata";
+
+    const onLoaded = () => {
+      const duration = Number.isFinite(video.duration) ? video.duration : 0;
+      const width = video.videoWidth || 0;
+      const height = video.videoHeight || 0;
+      resolve({ duration, width, height, url });
+    };
+
+    const onError = () => {
+      resolve({ duration: 0, width: 0, height: 0, url });
+    };
+
+    video.addEventListener("loadedmetadata", onLoaded, { once: true });
+    video.addEventListener("error", onError, { once: true });
+    video.src = url;
+  });
+};
 const steps: Step[] = [
   { id: 1, title: "Title", description: "Video title" },
   { id: 2, title: "Images", description: "Upload images" },
