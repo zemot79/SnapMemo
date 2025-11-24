@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Timeline, MediaItem } from "@/components/Timeline";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -107,16 +106,7 @@ export const EditStep = ({
               </p>
             </div>
             <div className="p-4 pt-0">
-              <Timeline
-                items={items}
-                onRemove={onRemove}
-                onReorder={onReorder}
-                onDurationChange={onDurationChange}
-                onKenBurnsChange={onKenBurnsChange}
-                onTextOverlayClick={onTextOverlayClick}
-                location={location}
-              />
-            </div>
+                          </div>
           </Card>
         </div>
 
