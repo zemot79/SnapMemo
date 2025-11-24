@@ -271,27 +271,42 @@ const Index = () => {
     setMediaItems(prev => prev.map(i => i.id === id ? { ...i, focalPoint: f } : i));
   }, []);
 
-  // VIDEO ADD
+ // VIDEO ADD – metaadat (hossz + felbontás) kiolvasással
 const handleVideosAdded = useCallback(async (files: File[]) => {
-  const items = files.map<MediaItem>((file) => ({
-    id: Math.random().toString(36).slice(2),
-    file,
-    type: "video",
-    // alapértelmezett hossz: 30 mp, ha valamiért nem tudjuk kiolvasni
-    duration: undefined,
-    // ezt használjuk preview-hoz
-    thumbnail: URL.createObjectURL(file),
-    clips: [],
-  }));
+  const metas = await Promise.all(
+    files.map((file) => getVideoMetadata(file))
+  );
+
+  const items = files.map<MediaItem>((file, index) => {
+    const meta = metas[index];
+    const duration =
+      meta.duration && meta.duration > 0 ? meta.duration : undefined;
+
+    return {
+      id: Math.random().toString(36).slice(2),
+      file,
+      type: "video",
+      duration,
+      videoLength: duration,
+      width: meta.width || undefined,
+      height: meta.height || undefined,
+      thumbnail: meta.url,
+      url: meta.url,
+      clips: [],
+    };
+  });
+
   setMediaItems((prev) => [...prev, ...items]);
 }, []);
 
+
   // EXPORT
-  const calculateTotalDuration = useCallback(() => {
-    let total = mediaItems.reduce((t, i) => t + i.duration, 0);
-    if (videoLocation) total += 3;
-    return total;
-  }, [mediaItems, videoLocation]);
+const calculateTotalDuration = useCallback(() => {
+  let total = mediaItems.reduce((t, i) => t + (i.duration ?? 0), 0);
+  if (videoLocation) total += 3;
+  return total;
+}, [mediaItems, videoLocation]);
+
 
   const handleExport = useCallback((settings) => {
     if (previewPanelRef.current)
