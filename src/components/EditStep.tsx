@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ThemeSelector } from "@/components/ThemeSelector";
+import { Timeline, MediaItem } from "@/components/Timeline";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -94,7 +95,6 @@ export const EditStep = ({
           Reorder clips, adjust durations, set text, transitions and style.
         </p>
       </div>
-
            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.7fr)_minmax(480px,1fr)] gap-8 items-start">
         {/* BAL – TIMELINE + SORREND */}
         <div className="space-y-6">
@@ -106,6 +106,15 @@ export const EditStep = ({
               </p>
             </div>
             <div className="p-4 pt-0">
+                   <Timeline
+                items={items}
+                onRemove={onRemove}
+                onReorder={onReorder}
+                onDurationChange={onDurationChange}
+                onKenBurnsChange={onKenBurnsChange}
+                onTextOverlayClick={onTextOverlayClick}
+                location={location}
+              />
                           </div>
           </Card>
         </div>
