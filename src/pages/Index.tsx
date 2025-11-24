@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { ImageUploader } from "@/components/ImageUploader";
 import { VideoUploader } from "@/components/VideoUploader";
 import { AudioUploader } from "@/components/AudioUploader";
-import { Timeline, MediaItem, TextOverlay } from "@/components/Timeline";
+import type { MediaItem, TextOverlay } from "@/components/Timeline";
 import { ImageEditor } from "@/components/ImageEditor";
 import { VideoEditor } from "@/components/VideoEditor";
 import { PreviewPanel, PreviewPanelRef } from "@/components/PreviewPanel";
