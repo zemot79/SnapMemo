@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 
-interface TimelineItem {
+export interface TimelineItem {
   id: string;
   type: "title" | "globe" | "image" | "video" | "outro";
   file?: File;
   url?: string;
-  duration?: number; // images
-  startTime?: number; // videos
-  endTime?: number;   // videos
+  duration?: number; // images (seconds)
+  startTime?: number; // videos (seconds)
+  endTime?: number;   // videos (seconds)
 }
 
 interface TimelineEditorProps {
@@ -44,9 +44,9 @@ export default function TimelineEditor({
   // ------------------------------------------
   // DRAG & DROP (csak a nem „pinned” elemek húzhatóak)
   // ------------------------------------------
-  const onDragStart = (i: number) => {
-    if (isPinned(order[i])) return; // title / globe / outro fix helyen marad
-    setDragIndex(i);
+  const onDragStart = (index: number) => {
+    if (isPinned(order[index])) return;
+    setDragIndex(index);
   };
 
   const onDragOver = (e: React.DragEvent, i: number) => {
@@ -73,6 +73,7 @@ export default function TimelineEditor({
   // UPDATE IMAGE DURATION
   // ------------------------------------------
   const updateImageDuration = (id: string, duration: number) => {
+    if (!Number.isFinite(duration) || duration <= 0) duration = 1;
     const updated = order.map((item) =>
       item.id === id ? { ...item, duration } : item
     );
@@ -84,12 +85,9 @@ export default function TimelineEditor({
   // ------------------------------------------
   // UPDATE VIDEO TRIM
   // ------------------------------------------
-  const updateVideoTrim = (
-    id: string,
-    start: number,
-    end: number
-  ) => {
-    if (end < start) end = start;
+  const updateVideoTrim = (id: string, start: number, end: number) => {
+    if (!Number.isFinite(start) || start < 0) start = 0;
+    if (!Number.isFinite(end) || end < start) end = start;
 
     const updated = order.map((item) =>
       item.id === id ? { ...item, startTime: start, endTime: end } : item
@@ -101,6 +99,41 @@ export default function TimelineEditor({
   };
 
   // ------------------------------------------
+  // META INFO HELPERS
+  // ------------------------------------------
+  const formatSeconds = (value?: number) => {
+    if (value == null || Number.isNaN(value)) return "-";
+    return `${value.toFixed(1)}s`;
+  };
+
+  const getFileLabel = (item: TimelineItem) => {
+    if (item.file) {
+      const size = (item.file.size ?? 0) / (1024 * 1024);
+      const sizeLabel = size > 0 ? `${size.toFixed(1)} MB` : "";
+      return `${item.file.name}${sizeLabel ? ` • ${sizeLabel}` : ""}`;
+    }
+    if (item.url) return item.url.split("/").pop() ?? item.url;
+    return "Generated clip";
+  };
+
+  const getTypeLabel = (item: TimelineItem) => {
+    switch (item.type) {
+      case "title":
+        return "Title card";
+      case "globe":
+        return "Globe animation";
+      case "image":
+        return "Image clip";
+      case "video":
+        return "Video clip";
+      case "outro":
+        return "Outro logo";
+      default:
+        return "Clip";
+    }
+  };
+
+  // ------------------------------------------
   // TIMELINE CARD RENDER
   // ------------------------------------------
   const renderItem = (item: TimelineItem, index: number) => {
@@ -109,7 +142,10 @@ export default function TimelineEditor({
     const pinned = isPinned(item);
     const baseDuration = item.duration ?? 3;
     const start = item.startTime ?? 0;
-    const end = item.endTime ?? 30;
+    const end = item.endTime ?? (isVideo ? start + 5 : baseDuration);
+    const length = isVideo ? Math.max(0, end - start) : baseDuration;
+
+    const isDragging = dragIndex === index;
 
     return (
       <Card
@@ -118,163 +154,186 @@ export default function TimelineEditor({
         onDragStart={() => onDragStart(index)}
         onDragOver={(e) => onDragOver(e, index)}
         onDragEnd={onDragEnd}
-        className={`p-4 bg-card border hover:shadow-md transition-all ${
-          pinned ? "cursor-default" : "cursor-grab"
-        } relative flex flex-col gap-3`}
+        className={[
+          "p-4 rounded-2xl border bg-card/80 backdrop-blur-sm transition-all flex flex-col gap-3",
+          !pinned ? "cursor-grab active:cursor-grabbing" : "cursor-default opacity-95",
+          isDragging ? "ring-2 ring-primary/60 shadow-lg scale-[1.01]" : "hover:shadow-md",
+        ].join(" ")}
       >
-        {/* Drag handle */}
-        <div className="absolute left-2 top-2 text-muted-foreground">
-          <GripVertical className="w-4 h-4 opacity-70" />
-        </div>
-
-        {/* TYPE LABEL */}
-        <div className="pl-6 flex items-center justify-between gap-2">
-          <div>
-            {item.type === "title" && (
-              <div className="flex items-center gap-2 font-semibold">
-                <AlignLeft className="w-4 h-4" /> Title card
-              </div>
-            )}
-
-            {item.type === "globe" && (
-              <div className="flex items-center gap-2 font-semibold">
-                <span className="text-lg">🌍</span> Globe animation
-              </div>
-            )}
-
-            {isImage && (
-              <div className="flex items-center gap-2 font-semibold">
-                <ImageIcon className="w-4 h-4" /> Image
-              </div>
-            )}
-
-            {isVideo && (
-              <div className="flex items-center gap-2 font-semibold">
-                <VideoIcon className="w-4 h-4" /> Video clip
-              </div>
-            )}
-
-            {item.type === "outro" && (
-              <div className="flex items-center gap-2 font-semibold">
-                ⭐ Outro logo
-              </div>
+        {/* TOP ROW: HANDLE + LABEL + PIN */}
+        <div className="flex items-start gap-3">
+          <div className="mt-1 flex flex-col items-center">
+            {!pinned && (
+              <GripVertical className="w-4 h-4 text-muted-foreground" />
             )}
           </div>
 
-          {pinned && (
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wide">
-              Fixed position
-            </span>
+          <div className="flex-1 space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              {item.type === "title" && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-primary/10 text-primary">
+                  <AlignLeft className="w-3 h-3" />
+                  Title
+                </span>
+              )}
+              {item.type === "globe" && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-blue-500/10 text-blue-500">
+                  🌍 Globe
+                </span>
+              )}
+              {isImage && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-500">
+                  <ImageIcon className="w-3 h-3" />
+                  Image
+                </span>
+              )}
+              {isVideo && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-purple-500/10 text-purple-500">
+                  <VideoIcon className="w-3 h-3" />
+                  Video
+                </span>
+              )}
+              {item.type === "outro" && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-amber-500/10 text-amber-500">
+                  ⭐ Outro
+                </span>
+              )}
+
+              {pinned && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border border-dashed text-muted-foreground">
+                  Fixed position
+                </span>
+              )}
+            </div>
+
+            <div className="text-xs text-muted-foreground truncate">
+              {getFileLabel(item)}
+            </div>
+          </div>
+        </div>
+
+        {/* PREVIEW STRIP */}
+        <div className="flex items-center gap-3">
+          <div className="w-28 h-16 rounded-xl bg-muted overflow-hidden flex items-center justify-center text-[11px] text-muted-foreground">
+            {item.url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.url}
+                alt={getTypeLabel(item)}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span>{getTypeLabel(item)}</span>
+            )}
+          </div>
+
+          <div className="flex-1 text-xs space-y-1">
+            <div className="inline-flex items-center gap-1 text-muted-foreground">
+              <Timer className="w-3 h-3" />
+              {isImage && (
+                <span>Duration: {formatSeconds(baseDuration)}</span>
+              )}
+              {isVideo && (
+                <span>
+                  Start {formatSeconds(start)} • End {formatSeconds(end)} • Length{" "}
+                  {formatSeconds(length)}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* CONTROLS */}
+        <div className="flex flex-col gap-3 mt-1">
+          {isImage && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>Image duration</span>
+                <span>{formatSeconds(baseDuration)}</span>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={15}
+                step={1}
+                value={baseDuration}
+                onChange={(e) =>
+                  updateImageDuration(item.id, Number(e.target.value))
+                }
+                className="w-full accent-primary"
+              />
+            </div>
           )}
-        </div>
 
-        {/* IMAGE DURATION CONTROL */}
-        {isImage && (
-          <div className="pl-6">
-            <label className="text-sm text-muted-foreground flex items-center gap-2">
-              <Timer className="w-4 h-4" /> Display duration (sec)
-            </label>
-            <Input
-              type="number"
-              min={1}
-              value={baseDuration}
-              className="mt-1 w-24"
-              onChange={(e) =>
-                updateImageDuration(item.id, Number(e.target.value) || 1)
-              }
-              onMouseDown={(e) => e.stopPropagation()}
-            />
-          </div>
-        )}
-
-        {/* VIDEO TRIM */}
-        {isVideo && (
-          <div className="pl-6 flex flex-col gap-2">
-            <label className="text-sm text-muted-foreground flex items-center gap-2">
-              <Timer className="w-4 h-4" /> Trim video (sec)
-            </label>
-
-            <div className="flex flex-col gap-1">
-              <input
-                type="range"
-                min={0}
-                max={end}
-                value={start}
-                onChange={(e) =>
-                  updateVideoTrim(
-                    item.id,
-                    Number(e.target.value),
-                    end
-                  )
-                }
-                onMouseDown={(e) => e.stopPropagation()}
-              />
-              <input
-                type="range"
-                min={start}
-                max={Math.max(end, start + 1)}
-                value={end}
-                onChange={(e) =>
-                  updateVideoTrim(
-                    item.id,
-                    start,
-                    Number(e.target.value)
-                  )
-                }
-                onMouseDown={(e) => e.stopPropagation()}
-              />
+          {isVideo && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>Trim video</span>
+                <span>
+                  {formatSeconds(start)} → {formatSeconds(end)}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground">
+                    Start (s)
+                  </span>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    value={start}
+                    onChange={(e) =>
+                      updateVideoTrim(item.id, Number(e.target.value), end)
+                    }
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground">
+                    End (s)
+                  </span>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    value={end}
+                    onChange={(e) =>
+                      updateVideoTrim(item.id, start, Number(e.target.value))
+                    }
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
             </div>
+          )}
 
-            <div className="flex gap-3">
-              <Input
-                type="number"
-                className="w-20"
-                value={start}
-                onChange={(e) =>
-                  updateVideoTrim(
-                    item.id,
-                    Number(e.target.value) || 0,
-                    end
-                  )
-                }
-                onMouseDown={(e) => e.stopPropagation()}
-              />
-              <Input
-                type="number"
-                className="w-20"
-                value={end}
-                onChange={(e) =>
-                  updateVideoTrim(
-                    item.id,
-                    start,
-                    Number(e.target.value) || start + 1
-                  )
-                }
-                onMouseDown={(e) => e.stopPropagation()}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* OPEN TEXT OVERLAY */}
-        {(isImage || isVideo) && (
-          <div className="pl-6">
+          <div className="flex justify-between items-center pt-1">
             <Button
-              variant="secondary"
-              size="sm"
+              variant="outline"
+              size="xs"
+              className="text-[11px]"
               onClick={() => onOpenTextEditor(item.id)}
             >
-              Edit text overlay
+              Add / Edit text
             </Button>
           </div>
-        )}
+        </div>
       </Card>
     );
   };
 
   // ------------------------------------------
-  // RENDER – EGY OSZLOP, NAGY KÁRTYÁK
+  // RENDER – ONE COLUMN, LARGE CARDS
   // ------------------------------------------
+  if (!order.length) {
+    return (
+      <Card className="p-4 text-xs text-muted-foreground">
+        No clips in timeline yet. Add images or videos first.
+      </Card>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {order.map((item, i) => renderItem(item, i))}
