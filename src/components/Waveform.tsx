@@ -24,8 +24,8 @@ export const Waveform: React.FC<WaveformProps> = ({ audioRef }) => {
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
 
+    // csak analizálunk, a lejátszást az <audio> végzi
     source.connect(analyser);
-    // nem kötjük a destination-re, az audio elem magától szól
 
     const ctx = canvas.getContext("2d");
     if (!ctx) {
@@ -47,10 +47,9 @@ export const Waveform: React.FC<WaveformProps> = ({ audioRef }) => {
       for (let i = 0; i < bufferLength; i++) {
         const value = dataArray[i];
         const barHeight = (value / 255) * height;
-
         const y = height - barHeight;
 
-        ctx.fillStyle = "rgba(59,130,246,0.8)"; // tailwind primary approx
+        ctx.fillStyle = "rgba(59,130,246,0.8)";
         ctx.fillRect(x, y, barWidth, barHeight);
 
         x += barWidth + 1;
