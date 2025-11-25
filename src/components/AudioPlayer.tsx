@@ -1,172 +1,125 @@
-import { useEffect, useRef, useState } from "react";
-import { Slider } from "@/components/ui/slider";
+import React, { useEffect, useRef, useState } from "react";
 import { Play, Pause, Volume2 } from "lucide-react";
-import { toast } from "sonner";
+import { Slider } from "@/components/ui/slider";
+import { Waveform } from "./Waveform";
 
 interface AudioPlayerProps {
-  src: File | string;
-  fadeIn: number;
-  fadeOut: number;
-  volume: number;
+  file: File | null;
+  volume: number;      // 0–100
+  fadeIn: number;      // sec (UI)
+  fadeOut: number;     // sec (UI)
   onVolumeChange: (v: number) => void;
   onFadeInChange: (v: number) => void;
   onFadeOutChange: (v: number) => void;
 }
 
-export const AudioPlayer = ({
-  src,
+export const AudioPlayer: React.FC<AudioPlayerProps> = ({
+  file,
+  volume,
   fadeIn,
   fadeOut,
-  volume,
   onVolumeChange,
   onFadeInChange,
   onFadeOutChange,
-}: AudioPlayerProps) => {
+}) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const gainRef = useRef<GainNode | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [position, setPosition] = useState(0);
 
-  // -------------------------------------------------------
-  // 1) A stabil AudioContext egyszer jön létre
-  // -------------------------------------------------------
-  const initAudioContext = async () => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new AudioContext();
-    }
-    if (audioCtxRef.current.state === "suspended") {
-      await audioCtxRef.current.resume().catch(() => {});
-    }
-  };
-
-  // -------------------------------------------------------
-  // 2) Az audio element stabil (NEM jön létre új minden rendernél)
-  // -------------------------------------------------------
+  // Blob URL a File-hoz
   useEffect(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-    }
-
-    const audio = audioRef.current;
-
-    // File vagy URL?
-    if (src instanceof File) {
-      const url = URL.createObjectURL(src);
-      audio.src = url;
-    } else {
-      audio.src = src;
-    }
-
-    audio.preload = "metadata";
-
-    audio.onloadedmetadata = () => {
-      setDuration(audio.duration || 0);
-    };
-
-    audio.ontimeupdate = () => {
-      setPosition(audio.currentTime);
-    };
-
-    audio.onended = () => {
+    if (!file) {
+      setBlobUrl(null);
       setIsPlaying(false);
-    };
+      setDuration(0);
+      setPosition(0);
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    setBlobUrl(url);
 
     return () => {
-      audio.pause();
+      URL.revokeObjectURL(url);
     };
-  }, [src]);
+  }, [file]);
 
-  // -------------------------------------------------------
-  // 3) Play / Pause — stabil
-  // -------------------------------------------------------
-  const handlePlayPause = async () => {
+  // meta + timeupdate
+  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    await initAudioContext();
+    const onLoaded = () => setDuration(audio.duration || 0);
+    const onTime = () => setPosition(audio.currentTime || 0);
+    const onEnded = () => {
+      setIsPlaying(false);
+      setPosition(0);
+    };
 
-    // Létrehozzuk EGYSZER a sourceNode + gainNode-ot
-    if (!sourceRef.current) {
-      const ctx = audioCtxRef.current!;
-      const srcNode = ctx.createMediaElementSource(audio);
-      const gainNode = ctx.createGain();
+    audio.addEventListener("loadedmetadata", onLoaded);
+    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("ended", onEnded);
 
-      srcNode.connect(gainNode).connect(ctx.destination);
-      gainNode.gain.value = volume;
+    return () => {
+      audio.removeEventListener("loadedmetadata", onLoaded);
+      audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("ended", onEnded);
+    };
+  }, [blobUrl]);
 
-      sourceRef.current = srcNode;
-      gainRef.current = gainNode;
+  // hangerő (0–100 → 0–1)
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume / 100;
     }
+  }, [volume]);
+
+  const handlePlayPause = () => {
+    const audio = audioRef.current;
+    if (!audio || !blobUrl) return;
 
     if (isPlaying) {
       audio.pause();
       setIsPlaying(false);
     } else {
-      try {
-        await audio.play();
-        setIsPlaying(true);
-      } catch (e) {
-        toast.error("Autoplay blocked — click again to start.");
-      }
+      audio
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch((err) => {
+          console.warn("Playback error:", err);
+        });
     }
   };
 
-  // -------------------------------------------------------
-  // 4) Volume (gain node)
-  // -------------------------------------------------------
-  useEffect(() => {
-    if (gainRef.current) {
-      gainRef.current.gain.value = volume;
-    }
-  }, [volume]);
-
-  // -------------------------------------------------------
-  // 5) Fade-in / Fade-out (gain automations)
-  // -------------------------------------------------------
-  useEffect(() => {
+  const handleSeek = (vals: number[]) => {
     const audio = audioRef.current;
-    const gain = gainRef.current;
-    const ctx = audioCtxRef.current;
+    if (!audio || !duration) return;
 
-    if (!audio || !gain || !ctx) return;
-
-    gain.gain.cancelScheduledValues(ctx.currentTime);
-
-    // fade in
-    gain.gain.setValueAtTime(0, audio.currentTime);
-    gain.gain.linearRampToValueAtTime(volume, audio.currentTime + fadeIn);
-
-    // fade out
-    if (fadeOut > 0 && duration > 0) {
-      const startFadeOutAt = duration - fadeOut;
-      if (startFadeOutAt > 0) {
-        gain.gain.setValueAtTime(volume, startFadeOutAt);
-        gain.gain.linearRampToValueAtTime(0, duration);
-      }
-    }
-  }, [fadeIn, fadeOut, duration, volume]);
-
-  // -------------------------------------------------------
-  // 6) Seeking
-  // -------------------------------------------------------
-  const handleSeek = (value: number[]) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const newTime = value[0] * duration;
+    const ratio = vals[0];
+    const newTime = ratio * duration;
     audio.currentTime = newTime;
     setPosition(newTime);
   };
 
+  if (!file || !blobUrl) {
+    return (
+      <div className="p-4 text-sm text-muted-foreground border rounded-lg bg-card/40">
+        No audio selected.
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4 space-y-4 border rounded-lg bg-card/40 backdrop-blur">
-      {/* PLAYBACK LINE */}
+    <div className="p-4 space-y-4 border rounded-lg bg-card/60 backdrop-blur">
+      {/* rejtett audio elem */}
+      <audio ref={audioRef} src={blobUrl} preload="metadata" />
+
+      {/* lejátszás sor */}
       <div className="flex items-center gap-3">
         <button
+          type="button"
           onClick={handlePlayPause}
           className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition"
         >
@@ -186,31 +139,31 @@ export const AudioPlayer = ({
           />
         </div>
 
-        <span className="text-xs text-muted-foreground w-12 text-right">
-          {Math.floor(position)} / {Math.floor(duration)}s
+        <span className="text-xs text-muted-foreground w-16 text-right">
+          {Math.floor(position)}/{Math.floor(duration)}s
         </span>
       </div>
 
-      {/* VOLUME */}
+      {/* hangerő */}
       <div className="flex items-center gap-2">
         <Volume2 className="w-4 h-4 text-muted-foreground" />
         <Slider
           value={[volume]}
           min={0}
-          max={1}
-          step={0.01}
+          max={100}
+          step={1}
           onValueChange={(v) => onVolumeChange(v[0])}
           className="flex-1"
         />
-        <span className="text-xs w-10 text-right text-muted-foreground">
-          {Math.round(volume * 100)}%
+        <span className="text-xs text-muted-foreground w-10 text-right">
+          {volume}%
         </span>
       </div>
 
-      {/* FADE */}
+      {/* fade in/out – most UI (logikát később kötjük az exporthoz) */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-xs">Fade in (sec)</label>
+          <div className="text-xs mb-1">Fade in (sec)</div>
           <Slider
             value={[fadeIn]}
             min={0}
@@ -218,10 +171,12 @@ export const AudioPlayer = ({
             step={0.1}
             onValueChange={(v) => onFadeInChange(v[0])}
           />
+          <div className="text-[11px] text-muted-foreground">
+            {fadeIn.toFixed(1)}s
+          </div>
         </div>
-
         <div>
-          <label className="text-xs">Fade out (sec)</label>
+          <div className="text-xs mb-1">Fade out (sec)</div>
           <Slider
             value={[fadeOut]}
             min={0}
@@ -229,8 +184,14 @@ export const AudioPlayer = ({
             step={0.1}
             onValueChange={(v) => onFadeOutChange(v[0])}
           />
+          <div className="text-[11px] text-muted-foreground">
+            {fadeOut.toFixed(1)}s
+          </div>
         </div>
       </div>
+
+      {/* waveform */}
+      <Waveform audioRef={audioRef} />
     </div>
   );
 };
