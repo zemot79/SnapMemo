@@ -1,140 +1,129 @@
-import { useEffect, useRef, useState } from "react";
-import { Slider } from "@/components/ui/slider";
+import React, { useEffect, useRef, useState } from "react";
 import { Play, Pause, Volume2 } from "lucide-react";
-import { toast } from "sonner";
+import { Slider } from "@/components/ui/slider";
+import { Waveform } from "./Waveform";
 
 interface AudioPlayerProps {
-  src: File | string;        // File vagy URL
-  fadeIn: number;            // másodperc
-  fadeOut: number;           // másodperc
-  volume: number;            // 0–1
+  file: File | null;
+  volume: number;      // 0–100
+  fadeIn: number;      // sec – egyelőre csak UI
+  fadeOut: number;     // sec – egyelőre csak UI
   onVolumeChange: (v: number) => void;
   onFadeInChange: (v: number) => void;
   onFadeOutChange: (v: number) => void;
 }
 
-export const AudioPlayer = ({
-  src,
+export const AudioPlayer: React.FC<AudioPlayerProps> = ({
+  file,
+  volume,
   fadeIn,
   fadeOut,
-  volume,
   onVolumeChange,
   onFadeInChange,
-  onFadeOutChange
-}: AudioPlayerProps) => {
-
+  onFadeOutChange,
+}) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const gainRef = useRef<GainNode | null>(null);
-
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [position, setPosition] = useState(0);
 
-  // ------------------------------
-  // AUDIO INIT (FIX: AudioContext resume)
-  // ------------------------------
-  const ensureAudioContext = async () => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new AudioContext();
-    }
-    if (audioCtxRef.current.state === "suspended") {
-      await audioCtxRef.current.resume().catch(() => {});
-    }
-  };
-
-  // ------------------------------
-  // LOAD SRC (URL OR FILE)
-  // ------------------------------
+  // blob URL a File-hoz
   useEffect(() => {
-    const audio = new Audio();
-
-    if (src instanceof File) {
-      audio.src = URL.createObjectURL(src);
-    } else {
-      audio.src = src; // URL esetén
+    if (!file) {
+      setBlobUrl(null);
+      return;
     }
 
-    audio.preload = "metadata";
-    audioRef.current = audio;
+    const url = URL.createObjectURL(file);
+    setBlobUrl(url);
 
-    audio.onloadedmetadata = () => {
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [file]);
+
+  // metaadatok, pozíció
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleLoadedMeta = () => {
       setDuration(audio.duration || 0);
     };
 
-    audio.ontimeupdate = () => {
-      setPosition(audio.currentTime);
+    const handleTimeUpdate = () => {
+      setPosition(audio.currentTime || 0);
     };
 
-    audio.onended = () => {
+    const handleEnded = () => {
       setIsPlaying(false);
+      setPosition(0);
     };
+
+    audio.addEventListener("loadedmetadata", handleLoadedMeta);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("ended", handleEnded);
 
     return () => {
-      audio.pause();
+      audio.removeEventListener("loadedmetadata", handleLoadedMeta);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("ended", handleEnded);
     };
-  }, [src]);
+  }, [blobUrl]);
 
-  // ------------------------------
-  // PLAY / PAUSE
-  // ------------------------------
- const handlePlayPause = async () => {
-  const audio = audioRef.current;
-  if (!audio) return;
-
-  await ensureAudioContext(); // fontos!
-
-  if (!sourceRef.current) {
-    const ctx = audioCtxRef.current!;
-    const srcNode = ctx.createMediaElementSource(audio);
-    const gain = ctx.createGain();
-    gain.gain.value = volume;
-
-    srcNode.connect(gain).connect(ctx.destination);
-    sourceRef.current = srcNode;
-    gainRef.current = gain;
-  }
-
-  if (isPlaying) {
-    audio.pause();
-    setIsPlaying(false);
-    return;
-  }
-
-  try {
-    await audio.play();
-    setIsPlaying(true);
-  } catch (err) {
-    console.warn("Autoplay blocked:", err);
-    toast.error("Click again to allow audio playback.");
-  }
-};
-
-  // ------------------------------
-  // VOLUME
-  // ------------------------------
+  // hangerő (0–100 → 0–1)
   useEffect(() => {
-    if (gainRef.current) {
-      gainRef.current.gain.value = volume;
+    if (audioRef.current) {
+      audioRef.current.volume = volume / 100;
     }
   }, [volume]);
 
-  // ------------------------------
-  // FADE IN / OUT (UI only for now)
-  // ------------------------------
-  const handleSeek = (value: number[]) => {
+  const handlePlayPause = () => {
     const audio = audioRef.current;
     if (!audio) return;
-    audio.currentTime = value[0] * duration;
-    setPosition(value[0] * duration);
+
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+    } else {
+      audio
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch((err) => {
+          console.warn("Playback error:", err);
+        });
+    }
   };
 
+  const handleSeek = (values: number[]) => {
+    const audio = audioRef.current;
+    if (!audio || !duration) return;
+    const ratio = values[0];
+    const newTime = ratio * duration;
+    audio.currentTime = newTime;
+    setPosition(newTime);
+  };
+
+  if (!file || !blobUrl) {
+    return (
+      <div className="p-4 text-sm text-muted-foreground">
+        No audio selected.
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4 space-y-4 border rounded-lg bg-card/40 backdrop-blur">
-      {/* PLAYBACK BAR */}
+    <div className="p-4 space-y-4 border rounded-lg bg-card/60 backdrop-blur">
+      {/* HIDDEN AUDIO ELEM */}
+      <audio ref={audioRef} src={blobUrl} preload="metadata" />
+
+      {/* PLAYBACK SOR */}
       <div className="flex items-center gap-3">
         <button
+          type="button"
           onClick={handlePlayPause}
           className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 transition"
         >
@@ -145,7 +134,6 @@ export const AudioPlayer = ({
           )}
         </button>
 
-        {/* SEEK / POSITION */}
         <div className="flex-1">
           <Slider
             value={[duration ? position / duration : 0]}
@@ -155,31 +143,31 @@ export const AudioPlayer = ({
           />
         </div>
 
-        <span className="text-xs text-muted-foreground w-12 text-right">
+        <span className="text-xs text-muted-foreground w-16 text-right">
           {Math.floor(position)}/{Math.floor(duration)}s
         </span>
       </div>
 
-      {/* VOLUME */}
+      {/* HANGERŐ */}
       <div className="flex items-center gap-2">
         <Volume2 className="w-4 h-4 text-muted-foreground" />
         <Slider
           value={[volume]}
           min={0}
-          max={1}
-          step={0.01}
+          max={100}
+          step={1}
           onValueChange={(v) => onVolumeChange(v[0])}
           className="flex-1"
         />
-        <span className="text-xs text-muted-foreground w-8 text-right">
-          {Math.round(volume * 100)}%
+        <span className="text-xs text-muted-foreground w-10 text-right">
+          {volume}%
         </span>
       </div>
 
-      {/* FADE BARS */}
+      {/* FADE IN / OUT – most csak UI, logika később köthető rá */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-xs">Fade in (sec)</label>
+          <div className="text-xs mb-1">Fade in (sec)</div>
           <Slider
             value={[fadeIn]}
             min={0}
@@ -187,10 +175,12 @@ export const AudioPlayer = ({
             step={0.1}
             onValueChange={(v) => onFadeInChange(v[0])}
           />
+          <div className="text-[11px] text-muted-foreground">
+            {fadeIn.toFixed(1)}s
+          </div>
         </div>
-
         <div>
-          <label className="text-xs">Fade out (sec)</label>
+          <div className="text-xs mb-1">Fade out (sec)</div>
           <Slider
             value={[fadeOut]}
             min={0}
@@ -198,24 +188,14 @@ export const AudioPlayer = ({
             step={0.1}
             onValueChange={(v) => onFadeOutChange(v[0])}
           />
+          <div className="text-[11px] text-muted-foreground">
+            {fadeOut.toFixed(1)}s
+          </div>
         </div>
       </div>
 
-      {/* WAVEFORM */}
-      <div className="h-20 w-full bg-primary/10 rounded-md overflow-hidden">
-        {/* placeholder waveform – később feltöltjük valódi analizátorral */}
-        <div className="h-full flex items-end gap-[1px] p-1">
-          {[...Array(120)].map((_, i) => (
-            <div
-              key={i}
-              className="w-[2px] bg-primary/60"
-              style={{
-                height: `${20 + Math.sin(i / 3) * 10}px`,
-              }}
-            />
-          ))}
-        </div>
-      </div>
+      {/* WAVEFORM – a te meglévő Waveform.tsx-edet használjuk */}
+      <Waveform audioRef={audioRef} />
     </div>
   );
 };
