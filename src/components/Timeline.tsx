@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,7 @@ import {
   Video as VideoIcon,
   MapPin,
 } from "lucide-react";
+
 import {
   DndContext,
   closestCenter,
@@ -58,21 +59,15 @@ export interface MediaItem {
   url?: string;
   thumbnail?: string;
   duration?: number;
-  // videóknál – a VideoEditor-ban kezelt szegmensek
   clips?: { id: string; startTime: number; endTime: number }[];
-  // képeknél – Ken Burns
   kenBurns?: KenBurnsSettings;
-  // text overlayk
   textOverlays?: TextOverlay[];
-  // egyéb metainfók
   title?: string;
   description?: string;
   focalPoint?: { x: number; y: number } | null;
-  // videó metaadatok
   videoLength?: number;
   width?: number;
   height?: number;
-  // helyszín
   location?: string;
 }
 
@@ -86,12 +81,36 @@ interface TimelineProps {
   location?: string;
 }
 
-// ---- SEGÉDFÜGGVÉNYEK -----------------------------------------------------
+// ---- SEGÉDFÜGGVÉNY -------------------------------------------------------
 
 const formatSeconds = (value?: number) => {
   if (!value || !Number.isFinite(value)) return "Unknown";
   if (value < 10) return value.toFixed(1) + "s";
   return Math.round(value) + "s";
+};
+
+// ---- SORTABLE ITEM -------------------------------------------------------
+
+const SortableItem = ({
+  id,
+  children,
+}: {
+  id: string;
+  children: React.ReactNode;
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
+    </div>
+  );
 };
 
 // ---- FŐ KOMPONENS --------------------------------------------------------
@@ -103,36 +122,14 @@ export const Timeline: React.FC<TimelineProps> = ({
   onDurationChange,
   onTextOverlayClick,
 }) => {
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-
-  const handleDragStart = (index: number) => {
-    setDragIndex(index);
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
-    e.preventDefault();
-    if (dragIndex === null || dragIndex === index) {
-  return;
-}
-
-    // azonnal frissítjük a sorrendet a szülőben
-    onReorder(dragIndex, index);
-    setDragIndex(index);
-  };
-
-  const handleDragEnd = () => {
-    setDragIndex(null);
-  };
-
   const renderPreview = (item: MediaItem) => {
-    // video
     if (item.type === "video") {
       const src = item.url || item.thumbnail;
       if (src) {
         return (
           <video
             src={src}
-           className="w-full h-full object-cover rounded-lg"
+            className="w-full h-full object-cover rounded-lg"
             preload="metadata"
             muted
           />
@@ -145,7 +142,6 @@ export const Timeline: React.FC<TimelineProps> = ({
       );
     }
 
-    // image
     if (item.type === "image" && item.thumbnail) {
       return (
         <img
@@ -156,8 +152,11 @@ export const Timeline: React.FC<TimelineProps> = ({
       );
     }
 
-    // title / logo / location
-    if (item.type === "titleCard" || item.type === "logoCard" || item.type === "title") {
+    if (
+      item.type === "titleCard" ||
+      item.type === "logoCard" ||
+      item.type === "title"
+    ) {
       return (
         <div className="w-full h-full flex items-center justify-center text-[11px] text-muted-foreground px-3 text-center">
           {item.file?.name || item.title || "Title card"}
@@ -216,154 +215,171 @@ export const Timeline: React.FC<TimelineProps> = ({
     }
   };
 
+  // ---- DNDKIT CONFIG ------------------------------------------------------
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    })
+  );
+
+  // ---- RETURN --------------------------------------------------------------
+
   return (
-    <div className="flex flex-col gap-5 pb-12 w-full max-w-[750px]">
-      {items.map((item, index) => {
-        const isDragging = dragIndex === index;
-        const isImage = item.type === "image";
-        const isVideo = item.type === "video";
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={(event) => {
+        const { active, over } = event;
+        if (!over) return;
 
-        const videoInfo =
-          isVideo && (item.videoLength || item.duration)
-            ? formatSeconds(item.videoLength ?? item.duration)
-            : "Unknown";
-
-        return (
-          <React.Fragment key={item.id}>
-            <Card
-              draggable
-              onDragStart={() => handleDragStart(index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDragEnd={handleDragEnd}
-            className={[
-  "flex flex-col gap-4 border rounded-3xl p-6 transition-all bg-card/90 backdrop-blur-sm cursor-pointer",
-  isDragging
-    ? "ring-2 ring-primary shadow-xl scale-[1.01]"
-    : "hover:shadow-xl hover:scale-[1.01]",
-].join(" ")}
-            >
-              {/* HEADER */}
-              <div className="flex items-center gap-4">
-                <div className="p-1 rounded-md bg-muted flex items-center justify-center">
-                  <GripVertical className="w-4 h-4 text-muted-foreground" />
-                </div>
-
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  {iconFor(item)}
-                  {labelFor(item)}
-                </div>
-
-                <div className="ml-auto text-xs text-muted-foreground truncate max-w-[45%]">
-                  {item.file?.name ||
-                    item.location ||
-                    item.title ||
-                    (item.type === "logoCard" ? "SnapMemo logo" : "Generated clip")}
-                </div>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onRemove(item.id)}
-                  className="text-red-500 hover:text-red-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-
-              {/* BODY: PREVIEW + META + CONTROLS */}
-              <div className="flex items-start gap-6">
-                {/* PREVIEW */}
-              <div
-  className="
-    w-[320px] h-[200px] 
-    bg-muted rounded-xl overflow-hidden 
-    flex items-center justify-center 
-    shadow-md hover:shadow-lg 
-    transition-all
-  "
->
-  {renderPreview(item)}
-</div>
-
-                {/* RIGHT SIDE */}
-                <div className="flex-1 flex flex-col gap-3 mt-1 text-sm">
-                  {/* META ROW */}
-                  <div className="text-[11px] text-muted-foreground space-x-2">
-                    {isImage && (
-                      <>
-                        <span>Duration: {formatSeconds(item.duration ?? 3)}</span>
-                        {item.file?.name && <span>• {item.file.name}</span>}
-                      </>
-                    )}
-
-                    {isVideo && (
-                      <>
-                        <span>Video length: {videoInfo}</span>
-                        {item.width && item.height && (
-                          <span>
-                            {" "}
-                            • {item.width}×{item.height}
-                          </span>
-                        )}
-                        {item.file?.name && <span> • {item.file.name}</span>}
-                      </>
-                    )}
-
-                    {item.type === "titleCard" && (
-                      <span>Title card is generated from your images and text.</span>
-                    )}
-
-                    {item.type === "logoCard" && (
-                      <span>Outro logo – fixed duration at the end of the video.</span>
-                    )}
+        if (active.id !== over.id) {
+          const oldIndex = items.findIndex((i) => i.id === active.id);
+          const newIndex = items.findIndex((i) => i.id === over.id);
+          onReorder(oldIndex, newIndex);
+        }
+      }}
+    >
+      <SortableContext
+        items={items.map((i) => i.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="flex flex-col gap-5 pb-12 w-full max-w-[750px]">
+          {items.map((item) => (
+            <SortableItem key={item.id} id={item.id}>
+              <Card
+                className={[
+                  "flex flex-col gap-4 border rounded-3xl p-6 transition-all bg-card/90 backdrop-blur-sm cursor-pointer",
+                  "hover:shadow-xl hover:scale-[1.01]",
+                ].join(" ")}
+              >
+                {/* HEADER */}
+                <div className="flex items-center gap-4">
+                  <div className="p-1 rounded-md bg-muted flex items-center justify-center">
+                    <GripVertical className="w-4 h-4 text-muted-foreground" />
                   </div>
 
-                  {/* IMAGE DURATION SLIDER */}
-                  {isImage && (
-                    <div className="space-y-1">
-                      <input
-                        type="range"
-                        min={1}
-                        max={15}
-                        step={1}
-                        value={item.duration ?? 3}
-                        onChange={(e) =>
-                          onDurationChange(item.id, Number(e.target.value))
-                        }
-                        className="w-full accent-primary"
-                      />
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    {iconFor(item)}
+                    {labelFor(item)}
+                  </div>
+
+                  <div className="ml-auto text-xs text-muted-foreground truncate max-w-[45%]">
+                    {item.file?.name ||
+                      item.location ||
+                      item.title ||
+                      (item.type === "logoCard"
+                        ? "SnapMemo logo"
+                        : "Generated clip")}
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onRemove(item.id)}
+                    className="text-red-500 hover:text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {/* BODY */}
+                <div className="flex items-start gap-6">
+                  {/* PREVIEW */}
+                  <div
+                    className="
+                      w-[320px] h-[200px] 
+                      bg-muted rounded-xl overflow-hidden 
+                      flex items-center justify-center 
+                      shadow-md hover:shadow-lg 
+                      transition-all
+                    "
+                  >
+                    {renderPreview(item)}
+                  </div>
+
+                  {/* RIGHT SIDE */}
+                  <div className="flex-1 flex flex-col gap-3 mt-1 text-sm">
+                    {/* META */}
+                    <div className="text-[11px] text-muted-foreground space-x-2">
+                      {item.type === "image" && (
+                        <>
+                          <span>
+                            Duration: {formatSeconds(item.duration ?? 3)}
+                          </span>
+                          {item.file?.name && (
+                            <span>• {item.file.name}</span>
+                          )}
+                        </>
+                      )}
+
+                      {item.type === "video" && (
+                        <>
+                          <span>
+                            Video length:{" "}
+                            {formatSeconds(
+                              item.videoLength ?? item.duration
+                            )}
+                          </span>
+                          {item.width && item.height && (
+                            <span>
+                              • {item.width}×{item.height}
+                            </span>
+                          )}
+                          {item.file?.name && (
+                            <span>• {item.file.name}</span>
+                          )}
+                        </>
+                      )}
+
+                      {item.type === "titleCard" && (
+                        <span>
+                          Title card is generated from your images and text.
+                        </span>
+                      )}
+
+                      {item.type === "logoCard" && (
+                        <span>
+                          Outro logo – fixed duration at the end of the video.
+                        </span>
+                      )}
                     </div>
-                  )}
 
-                  {/* TEXT OVERLAY BUTTON */}
-                  {onTextOverlayClick && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-fit text-xs"
-                      onClick={() => onTextOverlayClick(item.id)}
-                    >
-                      Edit text overlay
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </Card>
+                    {/* IMAGE SLIDER */}
+                    {item.type === "image" && (
+                      <div className="space-y-1">
+                        <input
+                          type="range"
+                          min={1}
+                          max={15}
+                          step={1}
+                          value={item.duration ?? 3}
+                          onChange={(e) =>
+                            onDurationChange(item.id, Number(e.target.value))
+                          }
+                          className="w-full accent-primary"
+                        />
+                      </div>
+                    )}
 
-            {/* TRANSITION PREVIEW KÁRTYÁK KÖZÖTT */}
-            {index < items.length - 1 && (
-              <div className="pl-10">
-                <div className="inline-flex items-center gap-2 rounded-full border border-dashed border-border/70 bg-muted/60 px-3 py-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary/70" />
-                  <span className="text-[11px] text-muted-foreground">
-                    Transition between clips (random from selected set)
-                  </span>
+                    {/* TEXT OVERLAY */}
+                    {onTextOverlayClick && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-fit text-xs"
+                        onClick={() => onTextOverlayClick(item.id)}
+                      >
+                        Edit text overlay
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </React.Fragment>
-        );
-      })}
-    </div>
+              </Card>
+            </SortableItem>
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
   );
 };
