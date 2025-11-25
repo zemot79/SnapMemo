@@ -98,16 +98,28 @@ const SortableItem = ({
   id: string;
   children: React.ReactNode;
 }) => {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.9 : 1,
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+    >
       {children}
     </div>
   );
@@ -123,6 +135,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   onTextOverlayClick,
 }) => {
   const renderPreview = (item: MediaItem) => {
+    // video
     if (item.type === "video") {
       const src = item.url || item.thumbnail;
       if (src) {
@@ -142,6 +155,7 @@ export const Timeline: React.FC<TimelineProps> = ({
       );
     }
 
+    // image
     if (item.type === "image" && item.thumbnail) {
       return (
         <img
@@ -152,6 +166,7 @@ export const Timeline: React.FC<TimelineProps> = ({
       );
     }
 
+    // title / logo / simple text
     if (
       item.type === "titleCard" ||
       item.type === "logoCard" ||
@@ -164,6 +179,7 @@ export const Timeline: React.FC<TimelineProps> = ({
       );
     }
 
+    // location
     if (item.type === "location") {
       return (
         <div className="w-full h-full flex flex-col items-center justify-center text-[11px] text-muted-foreground px-3 text-center gap-1">
@@ -173,6 +189,7 @@ export const Timeline: React.FC<TimelineProps> = ({
       );
     }
 
+    // fallback
     return (
       <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
         Preview
@@ -288,7 +305,7 @@ export const Timeline: React.FC<TimelineProps> = ({
                   {/* PREVIEW */}
                   <div
                     className="
-                      w-[320px] h-[200px] 
+                      w-[380px] h-[240px] 
                       bg-muted rounded-xl overflow-hidden 
                       flex items-center justify-center 
                       shadow-md hover:shadow-lg 
