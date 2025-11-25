@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Upload, Music, X, Plus } from "lucide-react";
+import { Music, X, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -20,7 +20,6 @@ export const AudioUploader = ({
 }: AudioUploaderProps) => {
   const [activeTab, setActiveTab] = useState("upload");
 
-  // playback state
   const [volume, setVolume] = useState(80);
   const [fadeIn, setFadeIn] = useState(0);
   const [fadeOut, setFadeOut] = useState(0);
@@ -100,14 +99,13 @@ export const AudioUploader = ({
         </div>
       )}
 
-      {/* UPLOAD / LIBRARY TABS */}
+      {/* UPLOAD / LIBRARY */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="upload">Upload Your Own</TabsTrigger>
           <TabsTrigger value="library">Browse Free Music</TabsTrigger>
         </TabsList>
 
-        {/* UPLOAD TAB */}
         <TabsContent value="upload" className="mt-4">
           <div
             onDrop={handleDrop}
@@ -146,7 +144,6 @@ export const AudioUploader = ({
           </div>
         </TabsContent>
 
-        {/* LIBRARY TAB */}
         <TabsContent value="library" className="mt-4">
           <BackgroundMusicLibrary onTrackSelected={onAudioAdded} />
         </TabsContent>
