@@ -96,7 +96,9 @@ export const Timeline: React.FC<TimelineProps> = ({
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
     e.preventDefault();
-    if (dragIndex === null || dragIndex === index) return;
+    if (dragIndex === null || dragIndex === index) {
+  return;
+}
 
     // azonnal frissítjük a sorrendet a szülőben
     onReorder(dragIndex, index);
@@ -115,7 +117,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         return (
           <video
             src={src}
-            className="w-full h-full object-cover"
+           className="w-full h-full object-cover rounded-lg"
             preload="metadata"
             muted
           />
@@ -134,7 +136,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         <img
           src={item.thumbnail}
           alt={item.file?.name || "Image"}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover rounded-lg"
         />
       );
     }
@@ -218,12 +220,12 @@ export const Timeline: React.FC<TimelineProps> = ({
               onDragStart={() => handleDragStart(index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
-              className={[
-                "flex flex-col gap-4 border rounded-3xl p-6 transition-all bg-card/80 backdrop-blur-sm",
-                isDragging
-                  ? "ring-2 ring-primary shadow-xl scale-[1.01]"
-                  : "hover:shadow-lg",
-              ].join(" ")}
+            className={[
+  "flex flex-col gap-4 border rounded-3xl p-6 transition-all bg-card/90 backdrop-blur-sm cursor-pointer",
+  isDragging
+    ? "ring-2 ring-primary shadow-xl scale-[1.01]"
+    : "hover:shadow-xl hover:scale-[1.01]",
+].join(" ")}
             >
               {/* HEADER */}
               <div className="flex items-center gap-4">
@@ -256,9 +258,17 @@ export const Timeline: React.FC<TimelineProps> = ({
               {/* BODY: PREVIEW + META + CONTROLS */}
               <div className="flex items-start gap-6">
                 {/* PREVIEW */}
-                <div className="w-[240px] h-[160px] bg-muted rounded-xl overflow-hidden flex items-center justify-center shadow-sm">
-                  {renderPreview(item)}
-                </div>
+              <div
+  className="
+    w-[320px] h-[200px] 
+    bg-muted rounded-xl overflow-hidden 
+    flex items-center justify-center 
+    shadow-md hover:shadow-lg 
+    transition-all
+  "
+>
+  {renderPreview(item)}
+</div>
 
                 {/* RIGHT SIDE */}
                 <div className="flex-1 flex flex-col gap-3 mt-1 text-sm">
