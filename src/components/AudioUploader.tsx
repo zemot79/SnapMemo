@@ -20,7 +20,7 @@ export const AudioUploader = ({
 }: AudioUploaderProps) => {
   const [activeTab, setActiveTab] = useState("upload");
 
-  // Playback controls
+  // playback state
   const [volume, setVolume] = useState(80);
   const [fadeIn, setFadeIn] = useState(0);
   const [fadeOut, setFadeOut] = useState(0);
@@ -61,14 +61,15 @@ export const AudioUploader = ({
 
   return (
     <div className="space-y-8">
-
-      {/* TITLE */}
+      {/* HEADER */}
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold">Background Music</h2>
-        <p className="text-muted-foreground">Add and fine-tune background audio</p>
+        <p className="text-muted-foreground">
+          Add and preview background music tracks.
+        </p>
       </div>
 
-      {/* EXISTING TRACKS LIST */}
+      {/* CURRENT TRACKS LIST */}
       {audios.length > 0 && (
         <div className="space-y-3">
           {audios.map((audio, index) => (
@@ -106,14 +107,12 @@ export const AudioUploader = ({
           <TabsTrigger value="library">Browse Free Music</TabsTrigger>
         </TabsList>
 
-        {/* UPLOAD */}
+        {/* UPLOAD TAB */}
         <TabsContent value="upload" className="mt-4">
           <div
             onDrop={handleDrop}
             onDragOver={handleDragOver}
-            className="border-2 border-dashed border-primary/30 rounded-lg 
-                       p-12 text-center hover:border-primary/60 
-                       transition-colors cursor-pointer bg-card/50 backdrop-blur"
+            className="border-2 border-dashed border-primary/30 rounded-lg p-12 text-center hover:border-primary/60 transition-colors cursor-pointer bg-card/50 backdrop-blur"
           >
             <input
               type="file"
@@ -147,19 +146,18 @@ export const AudioUploader = ({
           </div>
         </TabsContent>
 
-        {/* LIBRARY */}
+        {/* LIBRARY TAB */}
         <TabsContent value="library" className="mt-4">
           <BackgroundMusicLibrary onTrackSelected={onAudioAdded} />
         </TabsContent>
       </Tabs>
 
-      {/* PLAYBACK & MIX PANEL --- only if there is at least 1 audio */}
+      {/* PLAYBACK & MIX – az első tracket játsszuk */}
       {audios.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold mb-2">Playback & Mix</h3>
-
           <AudioPlayer
-            file={audios[0]}       // mindig az első audio szól
+            file={audios[0]}
             volume={volume}
             fadeIn={fadeIn}
             fadeOut={fadeOut}
