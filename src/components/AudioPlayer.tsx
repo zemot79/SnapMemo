@@ -79,38 +79,37 @@ export const AudioPlayer = ({
   // ------------------------------
   // PLAY / PAUSE
   // ------------------------------
-  const handlePlayPause = async () => {
-    const audio = audioRef.current;
-    if (!audio) return;
+ const handlePlayPause = async () => {
+  const audio = audioRef.current;
+  if (!audio) return;
 
-    await ensureAudioContext(); // FIX: biztos user gesture után indul
+  await ensureAudioContext(); // fontos!
 
-    if (!sourceRef.current) {
-      const ctx = audioCtxRef.current!;
-      const srcNode = ctx.createMediaElementSource(audio);
-      const gain = ctx.createGain();
+  if (!sourceRef.current) {
+    const ctx = audioCtxRef.current!;
+    const srcNode = ctx.createMediaElementSource(audio);
+    const gain = ctx.createGain();
+    gain.gain.value = volume;
 
-      // Volume fix
-      gain.gain.value = volume;
+    srcNode.connect(gain).connect(ctx.destination);
+    sourceRef.current = srcNode;
+    gainRef.current = gain;
+  }
 
-      srcNode.connect(gain).connect(ctx.destination);
+  if (isPlaying) {
+    audio.pause();
+    setIsPlaying(false);
+    return;
+  }
 
-      sourceRef.current = srcNode;
-      gainRef.current = gain;
-    }
-
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-    } else {
-      try {
-        await audio.play();
-        setIsPlaying(true);
-      } catch (err) {
-        toast.error("Audio playback blocked by browser.");
-      }
-    }
-  };
+  try {
+    await audio.play();
+    setIsPlaying(true);
+  } catch (err) {
+    console.warn("Autoplay blocked:", err);
+    toast.error("Click again to allow audio playback.");
+  }
+};
 
   // ------------------------------
   // VOLUME
