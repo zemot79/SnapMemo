@@ -89,14 +89,20 @@ const formatSeconds = (value?: number) => {
   return Math.round(value) + "s";
 };
 
-// ---- SORTABLE ITEM -------------------------------------------------------
+// ---- SORTABLE ITEM (FOGANTYÚVAL) ----------------------------------------
+
+type SortableItemRenderProps = {
+  attributes: any;
+  listeners: any;
+  isDragging: boolean;
+};
 
 const SortableItem = ({
   id,
   children,
 }: {
   id: string;
-  children: React.ReactNode;
+  children: (props: SortableItemRenderProps) => React.ReactNode;
 }) => {
   const {
     attributes,
@@ -110,17 +116,12 @@ const SortableItem = ({
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.9 : 1,
+    opacity: isDragging ? 0.95 : 1,
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-    >
-      {children}
+    <div ref={setNodeRef} style={style}>
+      {children({ attributes, listeners, isDragging })}
     </div>
   );
 };
@@ -155,11 +156,12 @@ export const Timeline: React.FC<TimelineProps> = ({
       );
     }
 
-    // image
-    if (item.type === "image" && item.thumbnail) {
+    // image – thumbnail vagy url fallback
+    if (item.type === "image" && (item.thumbnail || item.url)) {
+      const src = item.thumbnail || item.url!;
       return (
         <img
-          src={item.thumbnail}
+          src={src}
           alt={item.file?.name || "Image"}
           className="w-full h-full object-cover rounded-lg"
         />
@@ -253,6 +255,12 @@ export const Timeline: React.FC<TimelineProps> = ({
         if (active.id !== over.id) {
           const oldIndex = items.findIndex((i) => i.id === active.id);
           const newIndex = items.findIndex((i) => i.id === over.id);
+
+          // safety guard – ha valamiért nem található
+          if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
+            return;
+          }
+
           onReorder(oldIndex, newIndex);
         }
       }}
@@ -262,138 +270,168 @@ export const Timeline: React.FC<TimelineProps> = ({
         strategy={verticalListSortingStrategy}
       >
         <div className="flex flex-col gap-5 pb-12 w-full max-w-[750px]">
-          {items.map((item) => (
-            <SortableItem key={item.id} id={item.id}>
-              <Card
-                className={[
-                  "flex flex-col gap-4 border rounded-3xl p-6 transition-all bg-card/90 backdrop-blur-sm cursor-pointer",
-                  "hover:shadow-xl hover:scale-[1.01]",
-                ].join(" ")}
-              >
-                {/* HEADER */}
-                <div className="flex items-center gap-4">
-                  <div className="p-1 rounded-md bg-muted flex items-center justify-center">
-                    <GripVertical className="w-4 h-4 text-muted-foreground" />
-                  </div>
-
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    {iconFor(item)}
-                    {labelFor(item)}
-                  </div>
-
-                  <div className="ml-auto text-xs text-muted-foreground truncate max-w-[45%]">
-                    {item.file?.name ||
-                      item.location ||
-                      item.title ||
-                      (item.type === "logoCard"
-                        ? "SnapMemo logo"
-                        : "Generated clip")}
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onRemove(item.id)}
-                    className="text-red-500 hover:text-red-600"
+          {items.map((item, index) => (
+            <React.Fragment key={item.id}>
+              <SortableItem id={item.id}>
+                {({ attributes, listeners, isDragging }) => (
+                  <Card
+                    className={[
+                      "flex flex-col gap-4 border rounded-3xl p-6 transition-all bg-card/90 backdrop-blur-sm cursor-pointer",
+                      isDragging
+                        ? "ring-2 ring-primary shadow-xl scale-[1.01]"
+                        : "hover:shadow-xl hover:scale-[1.01]",
+                    ].join(" ")}
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                    {/* HEADER */}
+                    <div className="flex items-center gap-4">
+                      {/* csak a fogantyú draggable */}
+                      <button
+                        type="button"
+                        className="p-1 rounded-md bg-muted flex items-center justify-center cursor-grab active:cursor-grabbing"
+                        {...attributes}
+                        {...listeners}
+                      >
+                        <GripVertical className="w-4 h-4 text-muted-foreground" />
+                      </button>
 
-                {/* BODY */}
-                <div className="flex items-start gap-6">
-                  {/* PREVIEW */}
-                  <div
-                    className="
-                      w-[380px] h-[240px] 
-                      bg-muted rounded-xl overflow-hidden 
-                      flex items-center justify-center 
-                      shadow-md hover:shadow-lg 
-                      transition-all
-                    "
-                  >
-                    {renderPreview(item)}
-                  </div>
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        {iconFor(item)}
+                        {labelFor(item)}
+                      </div>
 
-                  {/* RIGHT SIDE */}
-                  <div className="flex-1 flex flex-col gap-3 mt-1 text-sm">
-                    {/* META */}
-                    <div className="text-[11px] text-muted-foreground space-x-2">
-                      {item.type === "image" && (
-                        <>
-                          <span>
-                            Duration: {formatSeconds(item.duration ?? 3)}
-                          </span>
-                          {item.file?.name && (
-                            <span>• {item.file.name}</span>
-                          )}
-                        </>
-                      )}
+                      <div className="ml-auto text-xs text-muted-foreground truncate max-w-[45%]">
+                        {item.file?.name ||
+                          item.location ||
+                          item.title ||
+                          (item.type === "logoCard"
+                            ? "SnapMemo logo"
+                            : "Generated clip")}
+                      </div>
 
-                      {item.type === "video" && (
-                        <>
-                          <span>
-                            Video length:{" "}
-                            {formatSeconds(
-                              item.videoLength ?? item.duration
-                            )}
-                          </span>
-                          {item.width && item.height && (
-                            <span>
-                              • {item.width}×{item.height}
-                            </span>
-                          )}
-                          {item.file?.name && (
-                            <span>• {item.file.name}</span>
-                          )}
-                        </>
-                      )}
-
-                      {item.type === "titleCard" && (
-                        <span>
-                          Title card is generated from your images and text.
-                        </span>
-                      )}
-
-                      {item.type === "logoCard" && (
-                        <span>
-                          Outro logo – fixed duration at the end of the video.
-                        </span>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onRemove(item.id)}
+                        className="text-red-500 hover:text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
 
-                    {/* IMAGE SLIDER */}
-                    {item.type === "image" && (
-                      <div className="space-y-1">
-                        <input
-                          type="range"
-                          min={1}
-                          max={15}
-                          step={1}
-                          value={item.duration ?? 3}
-                          onChange={(e) =>
-                            onDurationChange(item.id, Number(e.target.value))
-                          }
-                          className="w-full accent-primary"
-                        />
-                      </div>
-                    )}
-
-                    {/* TEXT OVERLAY */}
-                    {onTextOverlayClick && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-fit text-xs"
-                        onClick={() => onTextOverlayClick(item.id)}
+                    {/* BODY */}
+                    <div className="flex flex-col sm:flex-row items-start gap-6">
+                      {/* PREVIEW */}
+                      <div
+                        className="
+                          w-full sm:w-[380px] 
+                          h-[220px] sm:h-[240px]
+                          bg-muted rounded-xl overflow-hidden 
+                          flex items-center justify-center 
+                          shadow-md hover:shadow-lg 
+                          transition-all
+                        "
                       >
-                        Edit text overlay
-                      </Button>
-                    )}
+                        {renderPreview(item)}
+                      </div>
+
+                      {/* RIGHT SIDE */}
+                      <div className="flex-1 flex flex-col gap-3 mt-1 text-sm w-full">
+                        {/* META */}
+                        <div className="text-[11px] text-muted-foreground space-x-2">
+                          {item.type === "image" && (
+                            <>
+                              <span>
+                                Duration: {formatSeconds(item.duration ?? 3)}
+                              </span>
+                              {item.file?.name && (
+                                <span>• {item.file.name}</span>
+                              )}
+                            </>
+                          )}
+
+                          {item.type === "video" && (
+                            <>
+                              <span>
+                                Video length:{" "}
+                                {formatSeconds(
+                                  item.videoLength ?? item.duration
+                                )}
+                              </span>
+                              {item.width && item.height && (
+                                <span>
+                                  • {item.width}×{item.height}
+                                </span>
+                              )}
+                              {item.file?.name && (
+                                <span>• {item.file.name}</span>
+                              )}
+                            </>
+                          )}
+
+                          {item.type === "titleCard" && (
+                            <span>
+                              Title card is generated from your images and
+                              text.
+                            </span>
+                          )}
+
+                          {item.type === "logoCard" && (
+                            <span>
+                              Outro logo – fixed duration at the end of the
+                              video.
+                            </span>
+                          )}
+                        </div>
+
+                        {/* IMAGE SLIDER */}
+                        {item.type === "image" && (
+                          <div className="space-y-1">
+                            <input
+                              type="range"
+                              min={1}
+                              max={15}
+                              step={1}
+                              value={item.duration ?? 3}
+                              onChange={(e) =>
+                                onDurationChange(
+                                  item.id,
+                                  Number(e.target.value)
+                                )
+                              }
+                              className="w-full accent-primary"
+                            />
+                          </div>
+                        )}
+
+                        {/* TEXT OVERLAY */}
+                        {onTextOverlayClick && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-fit text-xs"
+                            onClick={() => onTextOverlayClick(item.id)}
+                          >
+                            Edit text overlay
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                )}
+              </SortableItem>
+
+              {/* TRANSITION CHIP A KÁRTYÁK KÖZÖTT */}
+              {index < items.length - 1 && (
+                <div className="pl-10">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-dashed border-border/70 bg-muted/60 px-3 py-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary/70" />
+                    <span className="text-[11px] text-muted-foreground">
+                      Transition between clips (random from selected set)
+                    </span>
                   </div>
                 </div>
-              </Card>
-            </SortableItem>
+              )}
+            </React.Fragment>
           ))}
         </div>
       </SortableContext>
