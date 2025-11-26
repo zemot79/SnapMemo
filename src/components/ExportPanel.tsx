@@ -1,267 +1,185 @@
-import { Download, Settings } from "lucide-react";
-import { Button } from "./ui/button";
-import { Label } from "./ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Progress } from "./ui/progress";
-import { useState } from "react";
-import { toast } from "sonner";
+import { useState, useRef } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { Loader2, Download, Film } from "lucide-react";
+
+import {
+  buildTransitionMap,
+  ffmpegFilterForTransition,
+  TransitionId,
+} from "@/lib/transitions";
+
+import { createFFmpeg, fetchFile } from "@ffmpeg/ffmpeg";
 
 interface ExportPanelProps {
-  onExport: (settings: ExportSettings) => number;
-  disabled: boolean;
-  canvasRef?: React.RefObject<HTMLCanvasElement>;
-  totalDuration?: number;
+  items: {
+    id: string;
+    type: string;
+    url?: string;
+    thumbnail?: string;
+    file?: File;
+    duration?: number;
+  }[];
+  selectedTransitions: TransitionId[];
+  transitionDuration: number;
 }
 
-export interface ExportSettings {
-  format: string;
-  quality: string;
-}
+export const ExportPanel = ({
+  items,
+  selectedTransitions,
+  transitionDuration,
+}: ExportPanelProps) => {
+  const [loading, setLoading] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+  const ffmpegRef = useRef<any>(null);
 
-export const ExportPanel = ({ onExport, disabled, canvasRef, totalDuration = 0 }: ExportPanelProps) => {
-  const [format, setFormat] = useState("webm");
-  const [quality, setQuality] = useState("high");
-  const [aspectRatio, setAspectRatio] = useState("16:9");
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingProgress, setRecordingProgress] = useState(0);
-  const fps = 30; // Fixed at 30 FPS
+  const ensureFFmpeg = async () => {
+    if (!ffmpegRef.current) {
+      const ffmpeg = createFFmpeg({
+        log: true,
+        corePath: "/ffmpeg/ffmpeg-core.js",
+      });
+
+      ffmpeg.setProgress(({ ratio }) => {
+        setExportProgress(Math.round(ratio * 100));
+      });
+
+      await ffmpeg.load();
+      ffmpegRef.current = ffmpeg;
+    }
+    return ffmpegRef.current;
+  };
 
   const handleExport = async () => {
-    if (disabled) {
-      toast.error("Add at least one media item to export");
-      return;
+    if (items.length === 0) return;
+
+    const ffmpeg = await ensureFFmpeg();
+    setLoading(true);
+    setExportProgress(0);
+
+    // --------------------------------------------
+    // 1) CLIP fájlok betöltése FFmpeg-be
+    // --------------------------------------------
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+
+      const source =
+        item.file
+          ? item.file
+          : await (await fetch(item.url || item.thumbnail || "")).blob();
+
+      const uint8data = await fetchFile(source);
+      const filename = `clip${i}.mp4`;
+
+      await ffmpeg.FS("writeFile", filename, uint8data);
     }
-    
-    if (!canvasRef?.current) {
-      toast.error("Canvas not available");
-      return;
+
+    // --------------------------------------------
+    // 2) Transition lista (buildTransitionMap)
+    // --------------------------------------------
+    const transitions = buildTransitionMap(
+      items,
+      selectedTransitions,
+      transitionDuration
+    );
+
+    // --------------------------------------------
+    // 3) Filter chain felépítése
+    // --------------------------------------------
+    let filterParts: string[] = [];
+    let inputFiles: string[] = [];
+
+    items.forEach((_, idx) => {
+      inputFiles.push(`-i clip${idx}.mp4`);
+    });
+
+    // Példa:
+    // "[0][1]xfade=transition=fade:duration=0.5:offset=2[v1];
+    //  [v1][2]xfade=transition=slideleft:duration=0.5:offset=4[v2]"
+    let chainIdx = 0;
+    let previousOut = "";
+
+    for (let i = 0; i < transitions.length; i++) {
+      const t = transitions[i];
+      const A = i === 0 ? 0 : chainIdx;
+      const B = i + 1;
+
+      const filter = ffmpegFilterForTransition(t.transition, t.duration);
+
+      const outName = `v${i + 1}`;
+
+      filterParts.push(
+        `[${A}][${B}] ${filter}:offset=1.0 [${outName}]`
+      );
+
+      previousOut = outName;
+      chainIdx += 1;
     }
-    
-    // Warn about format limitations
-    if (format !== 'webm') {
-      toast.warning("Only WebM format is fully supported. File will be saved as WebM.");
-    }
-    
-    try {
-      const canvas = canvasRef.current;
-      
-      // Check if MediaRecorder is supported
-      if (!window.MediaRecorder) {
-        toast.error("Browser does not support video recording");
-        return;
-      }
-      
-      // Calculate total video duration
-      const totalDuration = onExport({ format, quality });
-      const durationMs = totalDuration * 1000;
-      
-      setIsRecording(true);
-      setRecordingProgress(0);
-      toast.info("Starting video capture...");
-      
-      // Start recording
-      const stream = canvas.captureStream(fps);
-      
-      let mimeType = 'video/webm';
-      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
-        mimeType = 'video/webm;codecs=vp9';
-      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
-        mimeType = 'video/webm;codecs=vp8';
-      } else {
-        toast.error("Browser doesn't support WebM recording");
-        setIsRecording(false);
-        return;
-      }
-      
-      const recorder = new MediaRecorder(stream, {
-        mimeType,
-        videoBitsPerSecond: getBitrate(quality),
-      });
-      
-      const chunks: Blob[] = [];
-      
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
-          chunks.push(e.data);
-        }
-      };
-      
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        // Always save as .webm since that's what MediaRecorder produces
-        a.download = `video_${Date.now()}.webm`;
-        document.body.appendChild(a);
-        a.click();
-        
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 100);
-        
-        stream.getTracks().forEach(track => track.stop());
-        setIsRecording(false);
-        setRecordingProgress(0);
-        toast.success("Video downloaded as WebM!");
-      };
-      
-      recorder.onerror = (e) => {
-        console.error('Recorder error:', e);
-        toast.error("Error during recording");
-        stream.getTracks().forEach(track => track.stop());
-        setIsRecording(false);
-        setRecordingProgress(0);
-      };
-      
-      // Start recording
-      recorder.start(100);
-      toast.success(`Recording ${Math.ceil(totalDuration)}s video at ${quality} quality`);
-      
-      // Update progress
-      const progressInterval = setInterval(() => {
-        setRecordingProgress((prev) => {
-          const newProgress = prev + (100 / (durationMs / 100));
-          return Math.min(newProgress, 100);
-        });
-      }, 100);
-      
-      // Stop after total duration
-      setTimeout(() => {
-        clearInterval(progressInterval);
-        if (recorder.state === 'recording') {
-          recorder.stop();
-        }
-      }, durationMs + 500); // Add 500ms buffer
-      
-    } catch (error) {
-      console.error("Export error:", error);
-      toast.error("Error during export");
-      setIsRecording(false);
-      setRecordingProgress(0);
-    }
-  };
-  
-  const getBitrate = (quality: string): number => {
-    switch (quality) {
-      case 'low': return 2500000;
-      case 'medium': return 5000000;
-      case 'high': return 10000000;
-      case 'ultra': return 20000000;
-      default: return 5000000;
-    }
-  };
-  
-  const getEstimatedSize = (qualityLevel: string): string => {
-    if (totalDuration === 0) return "~";
-    const bitrate = getBitrate(qualityLevel);
-    const sizeInMB = (bitrate * totalDuration) / (8 * 1024 * 1024);
-    return `~${sizeInMB.toFixed(1)} MB`;
+
+    const filterGraph =
+      filterParts.length > 0
+        ? `-filter_complex "${filterParts.join("; ")}" -map [${
+            previousOut || "0"
+          }]`
+        : `-map 0`; // nincs transition → csak concat
+
+    // --------------------------------------------
+    // 4) Export parancs felépítése
+    // --------------------------------------------
+    const command = [
+      ...inputFiles.join(" ").split(" "),
+      ...filterGraph.split(" "),
+      "-preset",
+      "veryfast",
+      "output.mp4",
+    ];
+
+    // FFmpeg WASM CLI futtatás
+    await ffmpeg.run(...command);
+
+    // --------------------------------------------
+    // 5) Kimeneti MP4 letöltése
+    // --------------------------------------------
+    const data = ffmpeg.FS("readFile", "output.mp4");
+    const url = URL.createObjectURL(new Blob([data.buffer], { type: "video/mp4" }));
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "snapmemo_video.mp4";
+    a.click();
+
+    setLoading(false);
   };
 
   return (
-    <div className="bg-card rounded-lg border border-border p-6 space-y-6">
-      <div className="flex items-center gap-2">
-        <Settings className="w-5 h-5 text-primary" />
-        <h3 className="text-lg font-semibold">Export Settings</h3>
-      </div>
+    <Card className="p-6 space-y-5">
+      <h3 className="text-xl font-semibold flex items-center gap-2">
+        <Film className="w-5 h-5 text-primary" />
+        Export Video
+      </h3>
 
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="aspectRatio">Format</Label>
-          <Select value={aspectRatio} onValueChange={setAspectRatio}>
-            <SelectTrigger id="aspectRatio">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="4:5">4:5 - Instagram, Facebook</SelectItem>
-              <SelectItem value="16:9">16:9 - TV, Monitor, Mobile landscape</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="fileType">File type</Label>
-          <Select value={format} onValueChange={setFormat}>
-            <SelectTrigger id="fileType">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="webm">WebM (Browser native)</SelectItem>
-              <SelectItem value="mp4">MP4 (Saved as WebM)*</SelectItem>
-              <SelectItem value="mov">MOV (Saved as WebM)*</SelectItem>
-              <SelectItem value="wmv">WMV (Saved as WebM)*</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="quality">Quality</Label>
-          <Select value={quality} onValueChange={setQuality}>
-            <SelectTrigger id="quality">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">
-                <div className="flex justify-between items-center w-full gap-4">
-                  <span>Low (720p)</span>
-                  <span className="text-xs text-muted-foreground">{getEstimatedSize('low')}</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="medium">
-                <div className="flex justify-between items-center w-full gap-4">
-                  <span>Medium (1080p)</span>
-                  <span className="text-xs text-muted-foreground">{getEstimatedSize('medium')}</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="high">
-                <div className="flex justify-between items-center w-full gap-4">
-                  <span>High (1440p)</span>
-                  <span className="text-xs text-muted-foreground">{getEstimatedSize('high')}</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="ultra">
-                <div className="flex justify-between items-center w-full gap-4">
-                  <span>Ultra (4K)</span>
-                  <span className="text-xs text-muted-foreground">{getEstimatedSize('ultra')}</span>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {isRecording && (
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Recording...</span>
-            <span className="font-medium">{Math.round(recordingProgress)}%</span>
-          </div>
-          <Progress value={recordingProgress} />
-        </div>
-      )}
+      <p className="text-sm text-muted-foreground">
+        Render your full video with transitions and theme effects.
+      </p>
 
       <Button
+        disabled={loading}
         onClick={handleExport}
-        disabled={disabled || isRecording}
-        className="w-full gap-2"
-        size="lg"
+        className="w-full flex items-center gap-2"
       >
-        <Download className="w-4 h-4" />
-        {isRecording ? "Recording..." : "Export Video"}
+        {loading ? (
+          <>
+            <Loader2 className="animate-spin w-4 h-4" />
+            Exporting… {exportProgress}%
+          </>
+        ) : (
+          <>
+            <Download className="w-4 h-4" />
+            Render & Download
+          </>
+        )}
       </Button>
-
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground text-center">
-          Video rendering happens in your browser
-        </p>
-        <p className="text-xs text-muted-foreground text-center">
-          *Browser only supports WebM export. Convert to other formats using external tools.
-        </p>
-      </div>
-    </div>
+    </Card>
   );
 };
