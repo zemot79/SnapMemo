@@ -67,15 +67,29 @@ export const EditStep = ({
   onDurationChange,
   onKenBurnsChange,
   onTextOverlayClick,
-  location,
 }: EditStepProps) => {
   const [selectedTransitions, setSelectedTransitions] = useState<TransitionId[]>(["fade"]);
   const [transitionDuration, setTransitionDuration] = useState<number>(0.4);
 
- const previewItem = useMemo(() => {
-  if (items.length === 0) return null;
-  return items[0];   // első item mindig az aktív
-}, [items]);
+  // NEW: selected clip state for Clip Preview
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+
+  // WIDE PREVIEW: selects current clip OR fallback to first video/image
+  const previewItem = useMemo(() => {
+    if (!items.length) return null;
+
+    if (selectedClipId) {
+      return items.find((i) => i.id === selectedClipId) || null;
+    }
+
+    const videoItem = items.find((i) => i.type === "video");
+    if (videoItem) return videoItem;
+
+    const imgItem = items.find((i) => i.type === "image");
+    if (imgItem) return imgItem;
+
+    return items[0];
+  }, [items, selectedClipId]);
 
   const toggleTransition = (id: TransitionId) => {
     setSelectedTransitions((prev) =>
@@ -90,7 +104,6 @@ export const EditStep = ({
         <p className="text-muted-foreground">Adjust media, text, and audio settings.</p>
       </div>
 
-      {/* TABS WRAPPER */}
       <Tabs defaultValue="media" className="w-full">
 
         {/* TAB HEADERS */}
@@ -100,12 +113,18 @@ export const EditStep = ({
           <TabsTrigger value="audio" className="px-6">Audio</TabsTrigger>
         </TabsList>
 
-        {/* ---------- MEDIA TAB ---------- */}
+        {/* ---------------- MEDIA TAB ---------------- */}
         <TabsContent value="media" className="mt-0">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
 
-            {/* BAL – TIMELINE */}
-            <div className="space-y-6">
+            {/* ---- TIMELINE ---- */}
+            <div
+              className="space-y-6"
+              onClickCapture={(e) => {
+                const id = (e.target as HTMLElement)?.closest("[data-id]")?.getAttribute("data-id");
+                if (id) setSelectedClipId(id);
+              }}
+            >
               <Card className="border-border">
                 <div className="p-4 pb-0">
                   <h3 className="text-base font-semibold">Timeline</h3>
@@ -121,66 +140,62 @@ export const EditStep = ({
                     onDurationChange={onDurationChange}
                     onKenBurnsChange={onKenBurnsChange}
                     onTextOverlayClick={onTextOverlayClick}
-                    location={location}
                   />
                 </div>
               </Card>
             </div>
 
-            {/* JOBB – PREVIEW + TÉMA + TRANSITIONOK */}
-            <div className="space-y-4 lg:max-h-[80vh] lg:overflow-y-auto">
+            {/* ---- RIGHT SIDE ---- */}
+            <div className="space-y-6">
 
-              {/* PREVIEW */}
-              <Card className="border-border lg:sticky lg:top-4">
-                <div className="p-5 pb-0 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-semibold flex items-center gap-2">
-                      <Play className="w-4 h-4 text-primary" />
-                      Clip Preview
-                    </h3>
-                  </div>
+              {/* -------- CLIP PREVIEW: FULL WIDTH -------- */}
+              <Card className="border-border">
+                <div className="p-5 pb-0">
+                  <h3 className="text-base font-semibold flex items-center gap-2">
+                    <Play className="w-4 h-4 text-primary" />
+                    Clip Preview
+                  </h3>
                 </div>
+
                 <div className="p-4">
                   {previewItem ? (
-                    <div className="aspect-video rounded-lg bg-muted overflow-hidden flex items-center justify-center">
+                    <div className="aspect-video rounded-lg overflow-hidden w-full bg-black">
                       {previewItem.type === "video" ? (
                         <video
-                          src={previewItem.thumbnail || (previewItem as any).url}
-                          className="w-full h-full object-cover"
+                          src={previewItem.url || previewItem.thumbnail}
+                          className="w-full h-full object-contain"
                           controls
                           preload="metadata"
                         />
                       ) : (
                         <img
                           src={previewItem.thumbnail}
-                          alt={previewItem.file?.name || "Preview"}
-                          className="w-full h-full object-cover"
+                          alt="Preview"
+                          className="w-full h-full object-contain"
                         />
                       )}
                     </div>
                   ) : (
-                    <div className="aspect-video rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                      Add images or videos to see a preview.
+                    <div className="aspect-video flex items-center justify-center bg-muted rounded-lg">
+                      No preview available
                     </div>
                   )}
                 </div>
               </Card>
 
-              {/* THEME SELECTOR */}
+              {/* -------- THEME SELECTOR -------- */}
               <ThemeSelector selectedTheme={selectedTheme} onThemeChange={onThemeChange} />
 
-              {/* TRANSITIONS */}
+              {/* -------- TRANSITIONS -------- */}
               <Card className="border-border">
-                <div className="p-4 pb-2 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-semibold flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-primary" />
-                      Transitions
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Choose transitions to randomize between clips.
-                    </p>
-                  </div>
+                <div className="p-4 pb-2">
+                  <h3 className="text-base font-semibold flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    Transitions
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Choose transitions to randomize between clips.
+                  </p>
                 </div>
 
                 <div className="px-4 pb-4 space-y-4">
@@ -203,42 +218,28 @@ export const EditStep = ({
                     ))}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-xs">Transition duration</Label>
-                    <div className="flex items-center gap-3">
-                      <Slider
-                        value={[transitionDuration]}
-                        min={0.2}
-                        max={1}
-                        step={0.1}
-                        onValueChange={(v) => setTransitionDuration(v[0] ?? 0.4)}
-                        className="flex-1"
-                      />
-                      <span className="text-xs text-muted-foreground w-10 text-right">
-                        {transitionDuration.toFixed(1)}s
-                      </span>
-                    </div>
+                  <Label className="text-xs">Transition duration</Label>
+                  <div className="flex items-center gap-3">
+                    <Slider
+                      value={[transitionDuration]}
+                      min={0.2}
+                      max={1}
+                      step={0.1}
+                      onValueChange={(v) => setTransitionDuration(v[0] ?? 0.4)}
+                      className="flex-1"
+                    />
+                    <span className="text-xs text-muted-foreground w-10 text-right">
+                      {transitionDuration.toFixed(1)}s
+                    </span>
                   </div>
                 </div>
               </Card>
 
-              {/* AI Smart Cut */}
-              <Card className="border-border">
-                <div className="p-4 space-y-2">
-                  <h3 className="text-base font-semibold flex items-center gap-2">
-                    <Wand2 className="w-4 h-4 text-primary" />
-                    AI Smart Cut (coming soon)
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Automatically find the best moments. Coming soon.
-                  </p>
-                </div>
-              </Card>
             </div>
           </div>
         </TabsContent>
 
-        {/* ---------- TEXT TAB ---------- */}
+        {/* ---------------- TEXT TAB ---------------- */}
         <TabsContent value="text">
           <Card className="p-6 space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -246,32 +247,22 @@ export const EditStep = ({
               Text Overlays
             </h3>
             <p className="text-sm text-muted-foreground">
-              Open text overlay editor inside the timeline (Edit text button).
+              Open text overlay editor inside the timeline.
             </p>
           </Card>
         </TabsContent>
 
-        {/* ---------- AUDIO TAB ---------- */}
+        {/* ---------------- AUDIO TAB ---------------- */}
         <TabsContent value="audio">
           <Card className="p-6 space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <Music className="w-4 h-4 text-primary" />
               Background Music
             </h3>
-
-            <p className="text-sm text-muted-foreground">
-              Upload your own background music or use recommended tracks.
-            </p>
-
-            <Button variant="outline" className="w-fit">
-              Upload audio
-            </Button>
-
-            <div className="text-xs text-muted-foreground">
-              (Recommended audio list coming here soon.)
-            </div>
+            <p className="text-sm text-muted-foreground">Audio settings coming soon.</p>
           </Card>
         </TabsContent>
+
       </Tabs>
     </div>
   );
