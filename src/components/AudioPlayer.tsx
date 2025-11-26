@@ -6,8 +6,8 @@ import { Waveform } from "./Waveform";
 interface AudioPlayerProps {
   file: File | null;
   volume: number;      // 0–100
-  fadeIn: number;      // sec (UI)
-  fadeOut: number;     // sec (UI)
+  fadeIn: number;      // sec (UI only for now)
+  fadeOut: number;     // sec (UI only for now)
   onVolumeChange: (v: number) => void;
   onFadeInChange: (v: number) => void;
   onFadeOutChange: (v: number) => void;
@@ -28,7 +28,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [duration, setDuration] = useState(0);
   const [position, setPosition] = useState(0);
 
-  // Blob URL a File-hoz
+  // Blob URL készítése a File-hoz
   useEffect(() => {
     if (!file) {
       setBlobUrl(null);
@@ -46,33 +46,42 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     };
   }, [file]);
 
-  // meta + timeupdate
+  // meta + timeupdate figyelés
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const onLoaded = () => setDuration(audio.duration || 0);
-    const onTime = () => setPosition(audio.currentTime || 0);
-    const onEnded = () => {
+    const handleLoaded = () => {
+      if (!isNaN(audio.duration)) {
+        setDuration(audio.duration);
+      }
+    };
+
+    const handleTime = () => {
+      setPosition(audio.currentTime);
+    };
+
+    const handleEnded = () => {
       setIsPlaying(false);
       setPosition(0);
     };
 
-    audio.addEventListener("loadedmetadata", onLoaded);
-    audio.addEventListener("timeupdate", onTime);
-    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("loadedmetadata", handleLoaded);
+    audio.addEventListener("timeupdate", handleTime);
+    audio.addEventListener("ended", handleEnded);
 
     return () => {
-      audio.removeEventListener("loadedmetadata", onLoaded);
-      audio.removeEventListener("timeupdate", onTime);
-      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("loadedmetadata", handleLoaded);
+      audio.removeEventListener("timeupdate", handleTime);
+      audio.removeEventListener("ended", handleEnded);
     };
   }, [blobUrl]);
 
   // hangerő (0–100 → 0–1)
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume = volume / 100;
+      const clamped = Math.min(Math.max(volume, 0), 100);
+      audioRef.current.volume = clamped / 100;
     }
   }, [volume]);
 
@@ -88,7 +97,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         .play()
         .then(() => setIsPlaying(true))
         .catch((err) => {
-          console.warn("Playback error:", err);
+          console.warn("Audio playback error:", err);
         });
     }
   };
@@ -96,7 +105,6 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const handleSeek = (vals: number[]) => {
     const audio = audioRef.current;
     if (!audio || !duration) return;
-
     const ratio = vals[0];
     const newTime = ratio * duration;
     audio.currentTime = newTime;
@@ -113,10 +121,10 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   return (
     <div className="p-4 space-y-4 border rounded-lg bg-card/60 backdrop-blur">
-      {/* rejtett audio elem */}
+      {/* rejtett natív audio elem – EZ szól */}
       <audio ref={audioRef} src={blobUrl} preload="metadata" />
 
-      {/* lejátszás sor */}
+      {/* lejátszó sor */}
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -134,6 +142,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
           <Slider
             value={[duration ? position / duration : 0]}
             max={1}
+            min={0}
             step={0.001}
             onValueChange={handleSeek}
           />
@@ -152,7 +161,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
           min={0}
           max={100}
           step={1}
-          onValueChange={(v) => onVolumeChange(v[0])}
+          onValueChange={(vals) => onVolumeChange(vals[0])}
           className="flex-1"
         />
         <span className="text-xs text-muted-foreground w-10 text-right">
@@ -160,7 +169,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         </span>
       </div>
 
-      {/* fade in/out – most UI (logikát később kötjük az exporthoz) */}
+      {/* fade in/out – csak UI, logikát majd később kötjük az exportra */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <div className="text-xs mb-1">Fade in (sec)</div>
@@ -169,12 +178,13 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             min={0}
             max={5}
             step={0.1}
-            onValueChange={(v) => onFadeInChange(v[0])}
+            onValueChange={(vals) => onFadeInChange(vals[0])}
           />
           <div className="text-[11px] text-muted-foreground">
             {fadeIn.toFixed(1)}s
           </div>
         </div>
+
         <div>
           <div className="text-xs mb-1">Fade out (sec)</div>
           <Slider
@@ -182,7 +192,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             min={0}
             max={5}
             step={0.1}
-            onValueChange={(v) => onFadeOutChange(v[0])}
+            onValueChange={(vals) => onFadeOutChange(vals[0])}
           />
           <div className="text-[11px] text-muted-foreground">
             {fadeOut.toFixed(1)}s
@@ -190,8 +200,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         </div>
       </div>
 
-      {/* waveform */}
-      <Waveform audioRef={audioRef} />
+      {/* egyszerű, CSS-es waveform – nincs több AudioContext */}
+      <Waveform />
     </div>
   );
 };
