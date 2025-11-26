@@ -2,46 +2,63 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Download, Film } from "lucide-react";
-
 import {
   buildTransitionMap,
   ffmpegFilterForTransition,
   TransitionId,
 } from "@/lib/transitions";
 
-// =============================================
-// SAFE DYNAMIC FFMPEG LOADER (NO BUILD ERRORS)
-// =============================================
-let ffmpegInstance: any = null;
+// ========================================================================
+// 100% Vercel-Biztos FFmpeg Loader — NINCS @ffmpeg/ffmpeg SEHOL
+// ========================================================================
+
+let ffmpegReady = false;
+let ffmpeg: any = null;
+let fetchFile: any = null;
 
 async function loadFFmpeg(setExportProgress: (n: number) => void) {
-  if (!ffmpegInstance) {
-
-    // --- IMPORTANT: BROKEN IMPORT STRING SO VITE CANNOT PARSE ---
-    const ffmpegModule = await import(
-      /* @vite-ignore */ "@ffmpeg/ffmpeg"
+  if (!ffmpegReady) {
+    // 1) Betöltjük a CDN-es bundle-t (NINCS IMPORT)
+    await loadScript(
+      "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.8/dist/ffmpeg.min.js"
     );
 
-    const createFFmpeg = ffmpegModule.createFFmpeg;
-    const fetchFile = ffmpegModule.fetchFile;
+    // FFmpeg a window objektumon lesz elérhető
+    const FFmpeg = (window as any).FFmpeg;
+    createFFmpeg = FFmpeg.createFFmpeg;
+    fetchFile = FFmpeg.fetchFile;
 
-    const ffmpeg = createFFmpeg({
-      log: false,
+    ffmpeg = createFFmpeg({
+      log: true,
       corePath:
-        "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js",
+        "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.2/dist/ffmpeg-core.js",
     });
 
-    ffmpeg.setProgress(({ ratio }) => {
-      setExportProgress(Math.round(ratio * 100));
-    });
+    ffmpeg.setProgress(({ ratio }: any) =>
+      setExportProgress(Math.round(ratio * 100))
+    );
 
     await ffmpeg.load();
-
-    ffmpegInstance = { ffmpeg, fetchFile };
+    ffmpegReady = true;
   }
 
-  return ffmpegInstance;
+  return { ffmpeg, fetchFile };
 }
+
+// Segédfüggvény script betöltéséhez
+function loadScript(src: string) {
+  return new Promise<void>((resolve, reject) => {
+    const el = document.createElement("script");
+    el.src = src;
+    el.onload = () => resolve();
+    el.onerror = () => reject(new Error("Failed loading FFmpeg CDN"));
+    document.body.appendChild(el);
+  });
+}
+
+// ========================================================================
+// EXPORT PANEL
+// ========================================================================
 
 interface ExportPanelProps {
   items: {
@@ -70,10 +87,9 @@ export const ExportPanel = ({
     setLoading(true);
     setExportProgress(0);
 
-    // ---- LAZY LOAD FFMPEG (SAFE) ----
     const { ffmpeg, fetchFile } = await loadFFmpeg(setExportProgress);
 
-    // ---- WRITE INPUT FILES ----
+    // 1) Inputok betöltése
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
 
@@ -82,45 +98,45 @@ export const ExportPanel = ({
         (await (await fetch(item.url || item.thumbnail || "")).blob());
 
       const data = await fetchFile(blob);
-
       ffmpeg.FS("writeFile", `clip${i}.mp4`, data);
     }
 
-    // ---- BUILD TRANSITION MAP ----
+    // 2) Transition lánc
     const transitions = buildTransitionMap(
       items,
       selectedTransitions,
       transitionDuration
     );
 
-    // ---- BUILD FILTER CHAIN ----
     const filterParts: string[] = [];
-    const inputArgs = items.map((_, i) => `-i clip${i}.mp4`);
+    const inputs = items.map((_, i) => `-i clip${i}.mp4`);
 
-    let prevOut = "";
-    let chain = 0;
+    let prev = "";
+    let chainIdx = 0;
 
     for (let i = 0; i < transitions.length; i++) {
       const t = transitions[i];
 
-      const A = i === 0 ? "0" : `v${chain}`;
+      const A = i === 0 ? "0" : `v${chainIdx}`;
       const B = `${i + 1}`;
 
       const filter = ffmpegFilterForTransition(t.transition, t.duration);
-      const out = `v${chain + 1}`;
+      const out = `v${chainIdx + 1}`;
 
       filterParts.push(`[${A}][${B}] ${filter}:offset=1.0 [${out}]`);
-      prevOut = out;
-      chain++;
+
+      prev = out;
+      chainIdx++;
     }
 
     const filterGraph =
       filterParts.length === 0
         ? `-map 0`
-        : `-filter_complex "${filterParts.join("; ")}" -map [${prevOut}]`;
+        : `-filter_complex "${filterParts.join("; ")}" -map [${prev}]`;
 
+    // 3) Futási parancs
     const command = [
-      ...inputArgs.join(" ").split(" "),
+      ...inputs.join(" ").split(" "),
       ...filterGraph.split(" "),
       "-preset",
       "veryfast",
@@ -129,11 +145,9 @@ export const ExportPanel = ({
 
     await ffmpeg.run(...command);
 
-    // ---- DOWNLOAD OUTPUT ----
-    const out = ffmpeg.FS("readFile", "output.mp4");
-    const url = URL.createObjectURL(
-      new Blob([out.buffer], { type: "video/mp4" })
-    );
+    // 4) Letöltés
+    const data = ffmpeg.FS("readFile", "output.mp4");
+    const url = URL.createObjectURL(new Blob([data.buffer]));
 
     const a = document.createElement("a");
     a.href = url;
@@ -151,7 +165,7 @@ export const ExportPanel = ({
       </h3>
 
       <p className="text-sm text-muted-foreground">
-        Render your video with transitions.
+        Render your full video with transitions and theme effects.
       </p>
 
       <Button
