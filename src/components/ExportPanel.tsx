@@ -10,7 +10,31 @@ import {
   TransitionId,
 } from "@/lib/transitions";
 
-import { createFFmpeg, fetchFile } from "@ffmpeg/ffmpeg";
+// ---------------------------
+// FFmpeg LAZY LOADER
+// ---------------------------
+let ffmpegInstance: any = null;
+
+async function loadFFmpeg(setExportProgress: (n: number) => void) {
+  if (!ffmpegInstance) {
+    const { createFFmpeg, fetchFile } = await import("@ffmpeg/ffmpeg");
+
+    const ffmpeg = createFFmpeg({
+      log: false,
+      corePath:
+        "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js", // működő CDN
+    });
+
+    ffmpeg.setProgress(({ ratio }) => {
+      setExportProgress(Math.round(ratio * 100));
+    });
+
+    await ffmpeg.load();
+    ffmpegInstance = { ffmpeg, fetchFile };
+  }
+
+  return ffmpegInstance;
+}
 
 interface ExportPanelProps {
   items: {
@@ -32,117 +56,88 @@ export const ExportPanel = ({
 }: ExportPanelProps) => {
   const [loading, setLoading] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
-  const ffmpegRef = useRef<any>(null);
-
-  const ensureFFmpeg = async () => {
-    if (!ffmpegRef.current) {
-      const ffmpeg = createFFmpeg({
-        log: true,
-        corePath: "/ffmpeg/ffmpeg-core.js",
-      });
-
-      ffmpeg.setProgress(({ ratio }) => {
-        setExportProgress(Math.round(ratio * 100));
-      });
-
-      await ffmpeg.load();
-      ffmpegRef.current = ffmpeg;
-    }
-    return ffmpegRef.current;
-  };
 
   const handleExport = async () => {
     if (items.length === 0) return;
 
-    const ffmpeg = await ensureFFmpeg();
     setLoading(true);
     setExportProgress(0);
 
-    // --------------------------------------------
-    // 1) CLIP fájlok betöltése FFmpeg-be
-    // --------------------------------------------
+    // FFmpeg betöltése
+    const { ffmpeg, fetchFile } = await loadFFmpeg(setExportProgress);
+
+    // ----------------------------
+    // 1) Input clip fájlok betöltése
+    // ----------------------------
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
 
-      const source =
-        item.file
-          ? item.file
-          : await (await fetch(item.url || item.thumbnail || "")).blob();
+      const srcBlob =
+        item.file ??
+        (await (await fetch(item.url || item.thumbnail || "")).blob());
 
-      const uint8data = await fetchFile(source);
-      const filename = `clip${i}.mp4`;
-
-      await ffmpeg.FS("writeFile", filename, uint8data);
+      const data = await fetchFile(srcBlob);
+      ffmpeg.FS("writeFile", `clip${i}.mp4`, data);
     }
 
-    // --------------------------------------------
-    // 2) Transition lista (buildTransitionMap)
-    // --------------------------------------------
+    // ----------------------------
+    // 2) Transition lista
+    // ----------------------------
     const transitions = buildTransitionMap(
       items,
       selectedTransitions,
       transitionDuration
     );
 
-    // --------------------------------------------
-    // 3) Filter chain felépítése
-    // --------------------------------------------
-    let filterParts: string[] = [];
-    let inputFiles: string[] = [];
+    // ----------------------------
+    // 3) Filter chain építése
+    // ----------------------------
+    const filterParts: string[] = [];
+    const inputList = items.map((_, i) => `-i clip${i}.mp4`);
 
-    items.forEach((_, idx) => {
-      inputFiles.push(`-i clip${idx}.mp4`);
-    });
-
-    // Példa:
-    // "[0][1]xfade=transition=fade:duration=0.5:offset=2[v1];
-    //  [v1][2]xfade=transition=slideleft:duration=0.5:offset=4[v2]"
+    let prevOut = "";
     let chainIdx = 0;
-    let previousOut = "";
 
     for (let i = 0; i < transitions.length; i++) {
       const t = transitions[i];
-      const A = i === 0 ? 0 : chainIdx;
-      const B = i + 1;
+
+      const A = i === 0 ? "0" : `v${chainIdx}`;
+      const B = `${i + 1}`;
 
       const filter = ffmpegFilterForTransition(t.transition, t.duration);
+      const out = `v${chainIdx + 1}`;
 
-      const outName = `v${i + 1}`;
+      filterParts.push(`[${A}][${B}] ${filter}:offset=1.0 [${out}]`);
 
-      filterParts.push(
-        `[${A}][${B}] ${filter}:offset=1.0 [${outName}]`
-      );
-
-      previousOut = outName;
-      chainIdx += 1;
+      prevOut = out;
+      chainIdx = chainIdx + 1;
     }
 
     const filterGraph =
-      filterParts.length > 0
-        ? `-filter_complex "${filterParts.join("; ")}" -map [${
-            previousOut || "0"
-          }]`
-        : `-map 0`; // nincs transition → csak concat
+      filterParts.length === 0
+        ? `-map 0`
+        : `-filter_complex "${filterParts.join("; ")}" -map [${prevOut}]`;
 
-    // --------------------------------------------
-    // 4) Export parancs felépítése
-    // --------------------------------------------
+    // ----------------------------
+    // 4) Parancs összeállítása
+    // ----------------------------
     const command = [
-      ...inputFiles.join(" ").split(" "),
+      ...inputList.join(" ").split(" "),
       ...filterGraph.split(" "),
       "-preset",
       "veryfast",
       "output.mp4",
     ];
 
-    // FFmpeg WASM CLI futtatás
     await ffmpeg.run(...command);
 
-    // --------------------------------------------
-    // 5) Kimeneti MP4 letöltése
-    // --------------------------------------------
+    // ----------------------------
+    // 5) Letöltés
+    // ----------------------------
     const data = ffmpeg.FS("readFile", "output.mp4");
-    const url = URL.createObjectURL(new Blob([data.buffer], { type: "video/mp4" }));
+    const url = URL.createObjectURL(
+      new Blob([data.buffer], { type: "video/mp4" })
+    );
 
     const a = document.createElement("a");
     a.href = url;
