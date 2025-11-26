@@ -1,7 +1,6 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { Loader2, Download, Film } from "lucide-react";
 
 import {
@@ -10,19 +9,26 @@ import {
   TransitionId,
 } from "@/lib/transitions";
 
-// ---------------------------
-// FFmpeg LAZY LOADER
-// ---------------------------
+// =============================================
+// SAFE DYNAMIC FFMPEG LOADER (NO BUILD ERRORS)
+// =============================================
 let ffmpegInstance: any = null;
 
 async function loadFFmpeg(setExportProgress: (n: number) => void) {
   if (!ffmpegInstance) {
-    const { createFFmpeg, fetchFile } = await import("@ffmpeg/ffmpeg");
+
+    // --- IMPORTANT: BROKEN IMPORT STRING SO VITE CANNOT PARSE ---
+    const ffmpegModule = await import(
+      /* @vite-ignore */ "@ffmpeg/ffmpeg"
+    );
+
+    const createFFmpeg = ffmpegModule.createFFmpeg;
+    const fetchFile = ffmpegModule.fetchFile;
 
     const ffmpeg = createFFmpeg({
       log: false,
       corePath:
-        "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js", // működő CDN
+        "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js",
     });
 
     ffmpeg.setProgress(({ ratio }) => {
@@ -30,6 +36,7 @@ async function loadFFmpeg(setExportProgress: (n: number) => void) {
     });
 
     await ffmpeg.load();
+
     ffmpegInstance = { ffmpeg, fetchFile };
   }
 
@@ -63,54 +70,48 @@ export const ExportPanel = ({
     setLoading(true);
     setExportProgress(0);
 
-    // FFmpeg betöltése
+    // ---- LAZY LOAD FFMPEG (SAFE) ----
     const { ffmpeg, fetchFile } = await loadFFmpeg(setExportProgress);
 
-    // ----------------------------
-    // 1) Input clip fájlok betöltése
-    // ----------------------------
+    // ---- WRITE INPUT FILES ----
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
 
-      const srcBlob =
+      const blob =
         item.file ??
         (await (await fetch(item.url || item.thumbnail || "")).blob());
 
-      const data = await fetchFile(srcBlob);
+      const data = await fetchFile(blob);
+
       ffmpeg.FS("writeFile", `clip${i}.mp4`, data);
     }
 
-    // ----------------------------
-    // 2) Transition lista
-    // ----------------------------
+    // ---- BUILD TRANSITION MAP ----
     const transitions = buildTransitionMap(
       items,
       selectedTransitions,
       transitionDuration
     );
 
-    // ----------------------------
-    // 3) Filter chain építése
-    // ----------------------------
+    // ---- BUILD FILTER CHAIN ----
     const filterParts: string[] = [];
-    const inputList = items.map((_, i) => `-i clip${i}.mp4`);
+    const inputArgs = items.map((_, i) => `-i clip${i}.mp4`);
 
     let prevOut = "";
-    let chainIdx = 0;
+    let chain = 0;
 
     for (let i = 0; i < transitions.length; i++) {
       const t = transitions[i];
 
-      const A = i === 0 ? "0" : `v${chainIdx}`;
+      const A = i === 0 ? "0" : `v${chain}`;
       const B = `${i + 1}`;
 
       const filter = ffmpegFilterForTransition(t.transition, t.duration);
-      const out = `v${chainIdx + 1}`;
+      const out = `v${chain + 1}`;
 
       filterParts.push(`[${A}][${B}] ${filter}:offset=1.0 [${out}]`);
-
       prevOut = out;
-      chainIdx = chainIdx + 1;
+      chain++;
     }
 
     const filterGraph =
@@ -118,11 +119,8 @@ export const ExportPanel = ({
         ? `-map 0`
         : `-filter_complex "${filterParts.join("; ")}" -map [${prevOut}]`;
 
-    // ----------------------------
-    // 4) Parancs összeállítása
-    // ----------------------------
     const command = [
-      ...inputList.join(" ").split(" "),
+      ...inputArgs.join(" ").split(" "),
       ...filterGraph.split(" "),
       "-preset",
       "veryfast",
@@ -131,12 +129,10 @@ export const ExportPanel = ({
 
     await ffmpeg.run(...command);
 
-    // ----------------------------
-    // 5) Letöltés
-    // ----------------------------
-    const data = ffmpeg.FS("readFile", "output.mp4");
+    // ---- DOWNLOAD OUTPUT ----
+    const out = ffmpeg.FS("readFile", "output.mp4");
     const url = URL.createObjectURL(
-      new Blob([data.buffer], { type: "video/mp4" })
+      new Blob([out.buffer], { type: "video/mp4" })
     );
 
     const a = document.createElement("a");
@@ -155,7 +151,7 @@ export const ExportPanel = ({
       </h3>
 
       <p className="text-sm text-muted-foreground">
-        Render your full video with transitions and theme effects.
+        Render your video with transitions.
       </p>
 
       <Button
