@@ -106,7 +106,7 @@ export const EditStep = ({
 
         {/* ---------- MEDIA TAB ---------- */}
         <TabsContent value="media" className="mt-0">
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.7fr)_minmax(480px,1fr)] gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
 
             {/* BAL – TIMELINE */}
             <div className="space-y-6">
