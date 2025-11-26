@@ -72,14 +72,10 @@ export const EditStep = ({
   const [selectedTransitions, setSelectedTransitions] = useState<TransitionId[]>(["fade"]);
   const [transitionDuration, setTransitionDuration] = useState<number>(0.4);
 
-  const previewItem = useMemo(() => {
-    if (items.length === 0) return null;
-    const videoItem = items.find((i) => i.type === "video");
-    if (videoItem) return videoItem;
-    const imageItem = items.find((i) => i.type === "image");
-    if (imageItem) return imageItem;
-    return items[0];
-  }, [items]);
+ const previewItem = useMemo(() => {
+  if (items.length === 0) return null;
+  return items[0];   // első item mindig az aktív
+}, [items]);
 
   const toggleTransition = (id: TransitionId) => {
     setSelectedTransitions((prev) =>
