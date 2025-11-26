@@ -1,103 +1,120 @@
-import { themes, ColorTheme } from "@/lib/themes";
-import { Card } from "./ui/card";
-import { Check, Palette } from "lucide-react";
+import React from "react";
+import { Card } from "@/components/ui/card";
+import { Check } from "lucide-react";
 
 interface ThemeSelectorProps {
   selectedTheme: string;
-  onThemeChange: (themeId: string) => void;
+  onThemeChange: (id: string) => void;
 }
 
-export const ThemeSelector = ({ selectedTheme, onThemeChange }: ThemeSelectorProps) => {
+type Theme = {
+  id: string;
+  name: string;
+  preview: string; // preview kép
+  colors: string[];
+};
+
+const THEMES: Theme[] = [
+  {
+    id: "classicNeutral",
+    name: "Classic Neutral",
+    preview: "https://images.unsplash.com/photo-1558981403-c5f9891b6d2d?w=600",
+    colors: ["#d1d5db", "#9ca3af", "#6b7280"],
+  },
+  {
+    id: "dopamineBrights",
+    name: "Dopamine Brights",
+    preview: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=600",
+    colors: ["#f43f5e", "#f97316", "#22c55e"],
+  },
+  {
+    id: "cyberpunkNeon",
+    name: "Cyberpunk Neon",
+    preview: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600",
+    colors: ["#0ea5e9", "#9333ea", "#f43f5e"],
+  },
+  {
+    id: "earthSage",
+    name: "Earth & Sage",
+    preview: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=600",
+    colors: ["#4d7c0f", "#a3e635", "#d9f99d"],
+  },
+  {
+    id: "deepOcean",
+    name: "Deep Ocean",
+    preview: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600",
+    colors: ["#0ea5e9", "#1e3a8a", "#0f172a"],
+  },
+  {
+    id: "sunsetGradient",
+    name: "Sunset Gradient",
+    preview: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600",
+    colors: ["#fb923c", "#f43f5e", "#ec4899"],
+  },
+];
+
+export const ThemeSelector = ({
+  selectedTheme,
+  onThemeChange,
+}: ThemeSelectorProps) => {
   return (
-    <div className="border border-border rounded-lg p-6 bg-card mb-6 shadow-sm">
-      <div className="flex items-center gap-2 mb-4">
-        <Palette className="w-5 h-5 text-primary" />
-        <h3 className="text-base font-semibold text-foreground">Color Theme</h3>
+    <Card className="p-5 space-y-4 border-border">
+      <div>
+        <h3 className="text-base font-semibold">Color Theme</h3>
+        <p className="text-xs text-muted-foreground">
+          Choose a visual color style for your video.
+        </p>
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {themes.map((theme) => (
-          <Card
-            key={theme.id}
-            className={`cursor-pointer transition-all overflow-hidden ${
-              selectedTheme === theme.id
-                ? "ring-2 ring-primary shadow-lg scale-[1.02]"
-                : "hover:shadow-md hover:scale-[1.01]"
-            }`}
-            onClick={() => onThemeChange(theme.id)}
-          >
-            {/* Theme preview banner */}
-            <div 
-              className="h-24 w-full relative"
-              style={{
-                background: theme.gradient || `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.secondary} 100%)`
-              }}
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        {THEMES.map((theme) => {
+          const active = selectedTheme === theme.id;
+
+          return (
+            <button
+              key={theme.id}
+              onClick={() => onThemeChange(theme.id)}
+              className={[
+                "relative group rounded-2xl overflow-hidden border",
+                active
+                  ? "border-primary shadow-lg"
+                  : "border-border hover:border-primary/50",
+              ].join(" ")}
             >
-              {/* Sample text overlay to show how it looks */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div 
-                  className="text-center px-4"
-                  style={{ color: theme.colors.text }}
-                >
-                  <p className="font-bold text-lg mb-1" style={{ 
-                    textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                    color: theme.id === 'classic' || theme.id === 'earth' || theme.id === 'sunset' ? theme.colors.text : '#ffffff'
-                  }}>
-                    Your Video
-                  </p>
-                  <p className="text-xs opacity-90" style={{ 
-                    textShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                    color: theme.id === 'classic' || theme.id === 'earth' || theme.id === 'sunset' ? theme.colors.text : '#ffffff'
-                  }}>
-                    Preview
-                  </p>
+              {/* Preview image */}
+              <div className="aspect-video w-full overflow-hidden">
+                <img
+                  src={theme.preview}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                  alt={theme.name}
+                />
+              </div>
+
+              {/* Name */}
+              <div className="p-3 text-left">
+                <p className="text-sm font-semibold">{theme.name}</p>
+
+                <div className="flex gap-1 mt-1">
+                  {theme.colors.map((c, idx) => (
+                    <div
+                      key={idx}
+                      className="w-3 h-3 rounded-full border"
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
                 </div>
               </div>
-              
-              {/* Check mark indicator */}
-              {selectedTheme === theme.id && (
-                <div className="absolute top-2 right-2 bg-primary rounded-full p-1 shadow-lg">
-                  <Check className="w-4 h-4 text-primary-foreground" />
+
+              {/* Active checkmark */}
+              {active && (
+                <div className="absolute top-2 right-2 bg-primary text-white p-1 rounded-full shadow-md">
+                  <Check className="w-4 h-4" />
                 </div>
               )}
-            </div>
-            
-            {/* Theme details */}
-            <div className="p-4 space-y-3">
-              <div>
-                <p className="font-semibold text-sm text-foreground">
-                  {theme.name}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {theme.description}
-                </p>
-              </div>
-              
-              {/* Color palette */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Palette:</span>
-                <div className="flex gap-1.5">
-                  <div
-                    className="w-5 h-5 rounded border border-border shadow-sm"
-                    style={{ backgroundColor: theme.colors.primary }}
-                    title="Primary"
-                  />
-                  <div
-                    className="w-5 h-5 rounded border border-border shadow-sm"
-                    style={{ backgroundColor: theme.colors.secondary }}
-                    title="Secondary"
-                  />
-                  <div
-                    className="w-5 h-5 rounded border border-border shadow-sm"
-                    style={{ backgroundColor: theme.colors.accent }}
-                    title="Accent"
-                  />
-                </div>
-              </div>
-            </div>
-          </Card>
-        ))}
+            </button>
+          );
+        })}
       </div>
-    </div>
+    </Card>
   );
 };
