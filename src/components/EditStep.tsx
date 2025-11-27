@@ -12,8 +12,6 @@ import {
   Sparkles,
   Type,
   Music,
-  Shuffle,
-  Wand2,
 } from "lucide-react";
 
 type KenBurnsSettings = {
@@ -68,28 +66,31 @@ export const EditStep = ({
   onKenBurnsChange,
   onTextOverlayClick,
 }: EditStepProps) => {
-  const [selectedTransitions, setSelectedTransitions] = useState<TransitionId[]>(["fade"]);
+  const [selectedTransitions, setSelectedTransitions] =
+    useState<TransitionId[]>(["fade"]);
   const [transitionDuration, setTransitionDuration] = useState<number>(0.4);
-
-  // NEW: selected clip state for Clip Preview
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
 
-  // WIDE PREVIEW: selects current clip OR fallback to first video/image
+  // E: timeline sorrendezés – title mindig elöl, logo mindig hátul
+  const orderedItems = useMemo(() => {
+    const title = items.filter((i) => i.type === "titleCard");
+    const middle = items.filter(
+      (i) => i.type !== "titleCard" && i.type !== "logoCard"
+    );
+    const logo = items.filter((i) => i.type === "logoCard");
+    return [...title, ...middle, ...logo];
+  }, [items]);
+
+  // Clip preview: alapból az első timeline-elem (így a Title card)
   const previewItem = useMemo(() => {
-    if (!items.length) return null;
+    if (!orderedItems.length) return null;
 
     if (selectedClipId) {
-      return items.find((i) => i.id === selectedClipId) || null;
+      return orderedItems.find((i) => i.id === selectedClipId) || null;
     }
 
-    const videoItem = items.find((i) => i.type === "video");
-    if (videoItem) return videoItem;
-
-    const imgItem = items.find((i) => i.type === "image");
-    if (imgItem) return imgItem;
-
-    return items[0];
-  }, [items, selectedClipId]);
+    return orderedItems[0];
+  }, [orderedItems, selectedClipId]);
 
   const toggleTransition = (id: TransitionId) => {
     setSelectedTransitions((prev) =>
@@ -101,27 +102,34 @@ export const EditStep = ({
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="text-center mb-2">
         <h2 className="text-2xl font-bold">Edit</h2>
-        <p className="text-muted-foreground">Adjust media, text, and audio settings.</p>
+        <p className="text-muted-foreground">
+          Adjust media, text, and audio settings.
+        </p>
       </div>
 
       <Tabs defaultValue="media" className="w-full">
-
-        {/* TAB HEADERS */}
         <TabsList className="mx-auto mb-4 w-fit">
-          <TabsTrigger value="media" className="px-6">Media</TabsTrigger>
-          <TabsTrigger value="text" className="px-6">Text</TabsTrigger>
-          <TabsTrigger value="audio" className="px-6">Audio</TabsTrigger>
+          <TabsTrigger value="media" className="px-6">
+            Media
+          </TabsTrigger>
+          <TabsTrigger value="text" className="px-6">
+            Text
+          </TabsTrigger>
+          <TabsTrigger value="audio" className="px-6">
+            Audio
+          </TabsTrigger>
         </TabsList>
 
-        {/* ---------------- MEDIA TAB ---------------- */}
+        {/* MEDIA TAB */}
         <TabsContent value="media" className="mt-0">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-
-            {/* ---- TIMELINE ---- */}
+            {/* TIMELINE */}
             <div
               className="space-y-6"
               onClickCapture={(e) => {
-                const id = (e.target as HTMLElement)?.closest("[data-id]")?.getAttribute("data-id");
+                const id = (e.target as HTMLElement)
+                  ?.closest("[data-id]")
+                  ?.getAttribute("data-id");
                 if (id) setSelectedClipId(id);
               }}
             >
@@ -134,7 +142,7 @@ export const EditStep = ({
                 </div>
                 <div className="p-4 pt-0">
                   <Timeline
-                    items={items}
+                    items={orderedItems}
                     onRemove={onRemove}
                     onReorder={onReorder}
                     onDurationChange={onDurationChange}
@@ -145,10 +153,9 @@ export const EditStep = ({
               </Card>
             </div>
 
-            {/* ---- RIGHT SIDE ---- */}
+            {/* RIGHT SIDE */}
             <div className="space-y-6">
-
-              {/* -------- CLIP PREVIEW: FULL WIDTH -------- */}
+              {/* CLIP PREVIEW */}
               <Card className="border-border">
                 <div className="p-5 pb-0">
                   <h3 className="text-base font-semibold flex items-center gap-2">
@@ -169,7 +176,7 @@ export const EditStep = ({
                         />
                       ) : (
                         <img
-                          src={previewItem.thumbnail}
+                          src={previewItem.thumbnail || previewItem.url}
                           alt="Preview"
                           className="w-full h-full object-contain"
                         />
@@ -183,10 +190,13 @@ export const EditStep = ({
                 </div>
               </Card>
 
-              {/* -------- THEME SELECTOR -------- */}
-              <ThemeSelector selectedTheme={selectedTheme} onThemeChange={onThemeChange} />
+              {/* THEME */}
+              <ThemeSelector
+                selectedTheme={selectedTheme}
+                onThemeChange={onThemeChange}
+              />
 
-              {/* -------- TRANSITIONS -------- */}
+              {/* TRANSITIONS */}
               <Card className="border-border">
                 <div className="p-4 pb-2">
                   <h3 className="text-base font-semibold flex items-center gap-2">
@@ -212,7 +222,9 @@ export const EditStep = ({
                         />
                         <span>
                           <div className="font-medium">{t.label}</div>
-                          <div className="text-[11px] text-muted-foreground">{t.description}</div>
+                          <div className="text-[11px] text-muted-foreground">
+                            {t.description}
+                          </div>
                         </span>
                       </label>
                     ))}
@@ -234,12 +246,11 @@ export const EditStep = ({
                   </div>
                 </div>
               </Card>
-
             </div>
           </div>
         </TabsContent>
 
-        {/* ---------------- TEXT TAB ---------------- */}
+        {/* TEXT TAB */}
         <TabsContent value="text">
           <Card className="p-6 space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -252,17 +263,18 @@ export const EditStep = ({
           </Card>
         </TabsContent>
 
-        {/* ---------------- AUDIO TAB ---------------- */}
+        {/* AUDIO TAB */}
         <TabsContent value="audio">
           <Card className="p-6 space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <Music className="w-4 h-4 text-primary" />
               Background Music
             </h3>
-            <p className="text-sm text-muted-foreground">Audio settings coming soon.</p>
+            <p className="text-sm text-muted-foreground">
+              Audio settings coming soon.
+            </p>
           </Card>
         </TabsContent>
-
       </Tabs>
     </div>
   );
