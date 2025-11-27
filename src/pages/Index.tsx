@@ -329,15 +329,30 @@ const Index = () => {
     setMediaItems((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
-  // REORDER
-  const handleReorder = useCallback((from: number, to: number) => {
-    setMediaItems((prev) => {
-      const arr = [...prev];
-      const [it] = arr.splice(from, 1);
-      arr.splice(to, 0, it);
-      return arr;
-    });
-  }, []);
+// REORDER
+const handleReorder = useCallback((from, to) => {
+  setMediaItems((prev) => {
+    const arr = [...prev];
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
+
+    // Title card fixen az elején
+    const titleIdx = arr.findIndex((i) => i.type === "titleCard");
+    if (titleIdx > 0) {
+      const [t] = arr.splice(titleIdx, 1);
+      arr.unshift(t);
+    }
+
+    // Logo fixen a végén
+    const logoIdx = arr.findIndex((i) => i.type === "logoCard");
+    if (logoIdx !== -1 && logoIdx !== arr.length - 1) {
+      const [l] = arr.splice(logoIdx, 1);
+      arr.push(l);
+    }
+
+    return arr;
+  });
+}, []);
 
   // DURATION CHANGE
   const handleDurationChange = useCallback((id: string, duration: number) => {
@@ -379,6 +394,15 @@ const Index = () => {
     setMediaItems((prev) => [...prev, ...items]);
   }, []);
 
+  // SEGÉD: rendezett timeline (Title → köztesek → Logo)
+const getOrderedItems = () => [
+  ...mediaItems.filter((i) => i.type === "titleCard"),
+  ...mediaItems.filter(
+    (i) => i.type !== "titleCard" && i.type !== "logoCard"
+  ),
+  ...mediaItems.filter((i) => i.type === "logoCard"),
+];
+  
   const getImageCount = () =>
     mediaItems.filter((i) => i.type === "image").length;
   const getVideoCount = () =>
@@ -575,24 +599,24 @@ const Index = () => {
             </div>
           )}
 
-          {/* STEP 4 – EDIT & TIMELINE (Title mindig elöl, logo mindig hátul) */}
-          {currentStep === 4 && (
-            <EditStep
-              items={sortMediaItems(mediaItems)}
-              selectedTheme={selectedTheme}
-              onThemeChange={setSelectedTheme}
-              onRemove={handleRemove}
-              onReorder={handleReorder}
-              onDurationChange={handleDurationChange}
-              onKenBurnsChange={(id, kenBurns) => {
-                setMediaItems((prev) =>
-                  prev.map((i) => (i.id === id ? { ...i, kenBurns } : i))
-                );
-              }}
-              onTextOverlayClick={(id) => setTextOverlayItemId(id)}
-              location={videoLocation}
-            />
-          )}
+{/* STEP 4 – EDIT & TIMELINE */}
+{currentStep === 4 && (
+  <EditStep
+    items={getOrderedItems()}
+    selectedTheme={selectedTheme}
+    onThemeChange={setSelectedTheme}
+    onRemove={handleRemove}
+    onReorder={handleReorder}
+    onDurationChange={handleDurationChange}
+    onKenBurnsChange={(id, kenBurns) => {
+      setMediaItems((prev) =>
+        prev.map((i) => (i.id === id ? { ...i, kenBurns } : i))
+      );
+    }}
+    onTextOverlayClick={(id) => setTextOverlayItemId(id)}
+    location={videoLocation}
+  />
+)}
 
           {/* STEP 5 – MUSIC */}
           {currentStep === 5 && (
@@ -610,35 +634,34 @@ const Index = () => {
               />
             </div>
           )}
+          
+{/* STEP 6 – PREVIEW & EXPORT */}
+{currentStep === 6 && (
+  <div className="max-w-6xl mx-auto space-y-6">
+    <div className="text-center mb-6">
+      <h2 className="text-2xl font-bold">Preview and Export</h2>
+    </div>
 
-          {/* STEP 6 – PREVIEW & EXPORT */}
-          {currentStep === 6 && (
-            <div className="max-w-6xl mx-auto space-y-6">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold">Preview and Export</h2>
-              </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 space-y-4">
+        <PreviewPanel
+          ref={previewPanelRef}
+          items={getOrderedItems()}
+          selectedTransitions={["fade"]}
+          transitionDuration={0.4}
+        />
+      </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-4">
-                  <PreviewPanel
-                    ref={previewPanelRef}
-                    items={videoItems}
-                    selectedTransitions={DEFAULT_TRANSITIONS}
-                    transitionDuration={DEFAULT_TRANSITION_DURATION}
-                  />
-                </div>
-
-                <div className="lg:col-span-1">
-                  <ExportPanel
-                    items={orderedItems}
-                    selectedTransitions={DEFAULT_TRANSITIONS}
-                    transitionDuration={DEFAULT_TRANSITION_DURATION}
-                    titleCardDuration={titleCardDuration}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+      <div className="lg:col-span-1">
+        <ExportPanel
+          items={getOrderedItems().filter((i) => i.type === "video")}
+          selectedTransitions={["fade"]}
+          transitionDuration={0.4}
+        />
+      </div>
+    </div>
+  </div>
+)}
 
           {/* NAVIGATION */}
           {currentStep > 1 && (
