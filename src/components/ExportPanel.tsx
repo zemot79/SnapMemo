@@ -9,7 +9,7 @@ import {
 } from "@/lib/transitions";
 
 // ======================================================================
-// FFmpeg betöltése CDN-ről – 100% Vercel-biztos
+// FFmpeg betöltése CDN-ről – Vercel-biztos, nincs import("@ffmpeg/ffmpeg")
 // ======================================================================
 
 let ffmpegReady = false;
@@ -19,12 +19,14 @@ let createFFmpeg: any = null;
 
 async function loadFFmpeg(setExportProgress: (n: number) => void) {
   if (!ffmpegReady) {
-    // Betöltjük a CDN-es bundle-t (NINCS import)
     await loadScript(
       "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.8/dist/ffmpeg.min.js"
     );
 
     const FFmpeg = (window as any).FFmpeg;
+    if (!FFmpeg) {
+      throw new Error("FFmpeg global not found on window");
+    }
 
     createFFmpeg = FFmpeg.createFFmpeg;
     fetchFile = FFmpeg.fetchFile;
@@ -56,8 +58,11 @@ function loadScript(src: string) {
   });
 }
 
+// csak azért exportáljuk, mert máshol importálva volt
+export interface ExportSettings {}
+
 // ======================================================================
-// EXPORT PANEL
+// EXPORT PANEL – jelenleg: csak videókat fűz össze
 // ======================================================================
 
 interface ExportPanelProps {
@@ -89,7 +94,7 @@ export const ExportPanel = ({
 
     const { ffmpeg, fetchFile } = await loadFFmpeg(setProgress);
 
-    // 1) Input fájlok betöltése
+    // 1) Input fájlok betöltése – feltételezzük, hogy videók
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
 
@@ -106,7 +111,7 @@ export const ExportPanel = ({
       ffmpeg.FS("writeFile", `clip${i}.mp4`, data);
     }
 
-    // 2) Transition mapping
+    // 2) Transition lánc
     const transitions = buildTransitionMap(
       items,
       selectedTransitions,
@@ -168,11 +173,11 @@ export const ExportPanel = ({
       </h3>
 
       <p className="text-sm text-muted-foreground">
-        Render your entire video with transitions and theme effects.
+        Render and download your final video.
       </p>
 
       <Button
-        disabled={loading}
+        disabled={loading || items.length === 0}
         onClick={handleExport}
         className="w-full flex items-center gap-2"
       >
