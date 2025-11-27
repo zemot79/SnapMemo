@@ -6,355 +6,308 @@ import React, {
   useState,
   useMemo,
 } from "react";
-
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Play, Pause } from "lucide-react";
-import type { MediaItem } from "@/components/Timeline";
-import type { TransitionId } from "@/lib/transitions";
+import { TransitionId } from "@/lib/transitions";
 
-// A ref-ből hívható metódusok
 export interface PreviewPanelRef {
   play: () => void;
   pause: () => void;
-  startPlayback: () => void; // ezt hívod export előtt
-  seekToStart: () => void;
 }
-
-// Normálizált klip a playernek
-type NormalizedItem = {
-  id: string;
-  label: string;
-  type: "video" | "image";
-  src: string;
-  duration: number; // mp-ben
-};
 
 interface PreviewPanelProps {
-  items: MediaItem[];
-
-  // hogy kompatibilis legyen a mostani hívással:
-  selectedTransitions?: TransitionId[];
-  transitionDuration?: number;
-  [key: string]: any; // audioFile, location, stb. – most nem használjuk
+  items: {
+    id: string;
+    type: string; // "video" | "image" | "titleCard" | "logoCard" | ...
+    url?: string;
+    thumbnail?: string;
+    file?: File;
+    duration?: number;
+  }[];
+  selectedTransitions: TransitionId[]; // most még nem használjuk
+  transitionDuration: number;          // most még nem használjuk
 }
+
+const FALLBACK_DURATION = 3; // ha nincs duration megadva
 
 export const PreviewPanel = forwardRef<PreviewPanelRef, PreviewPanelProps>(
   ({ items }, ref) => {
     const videoRef = useRef<HTMLVideoElement | null>(null);
 
-    // Globális lejátszási idő (0..totalDuration)
-    const [playhead, setPlayhead] = useState(0);
+    // Globális idő (másodpercben) a teljes timeline-on
+    const [globalTime, setGlobalTime] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
 
-    // ------- MEDIA NORMALIZÁLÁS (Title card, képek, videók, logo) -------
-
-    const normalized = useMemo<NormalizedItem[]>(() => {
-      return (items || []).map((item, index) => {
-        const baseDuration =
-          item.duration ??
-          item.videoLength ??
-          (item.type === "titleCard" ? 4 : item.type === "logoCard" ? 2 : 3);
-
-        const isVideo = item.type === "video";
-
-        // videónál url vagy File → objectURL
-        let src = "";
-        if (isVideo) {
-          if (item.url) src = item.url;
-          else if (item.file instanceof File) src = URL.createObjectURL(item.file);
-        } else {
-          if (item.thumbnail) src = item.thumbnail;
-          else if (item.file instanceof File) src = URL.createObjectURL(item.file);
-        }
-
-        return {
-          id: item.id || `item-${index}`,
-          label:
-            item.type === "titleCard"
-              ? "Title card"
-              : item.type === "logoCard"
-              ? "Logo"
-              : item.file?.name || `Clip ${index + 1}`,
-          type: isVideo ? "video" : "image",
-          src,
-          duration: baseDuration || 3,
-        };
-      });
+    // Össz-hossz
+    const totalDuration = useMemo(() => {
+      if (!items.length) return 0;
+      return items.reduce((sum, item) => {
+        const d =
+          typeof item.duration === "number" && item.duration > 0
+            ? item.duration
+            : FALLBACK_DURATION;
+        return sum + d;
+      }, 0);
     }, [items]);
 
-    const totalDuration = useMemo(
-      () => normalized.reduce((sum, it) => sum + it.duration, 0),
-      [normalized]
-    );
-
-    // Ha nincs semmi, ne dőljön el
-    const safeTotal = totalDuration || 1;
-
-    // Jelenlegi klip index + offset (mp) a globális playhead alapján
-    const { currentIndex, clipOffset, clipStartTime } = useMemo(() => {
-      if (!normalized.length) {
-        return { currentIndex: 0, clipOffset: 0, clipStartTime: 0 };
+    // Derivált: melyik klipnél tartunk, azon belüli idő
+    const {
+      currentItem,
+      currentIndex,
+      timeInClip,
+      currentClipDuration,
+      offsetBeforeClip,
+    } = useMemo(() => {
+      if (!items.length || totalDuration === 0) {
+        return {
+          currentItem: null as any,
+          currentIndex: 0,
+          timeInClip: 0,
+          currentClipDuration: 0,
+          offsetBeforeClip: 0,
+        };
       }
 
-      let t = playhead;
-      for (let i = 0; i < normalized.length; i++) {
-        const d = normalized[i].duration;
-        if (t <= d || i === normalized.length - 1) {
+      let acc = 0;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const d =
+          typeof item.duration === "number" && item.duration > 0
+            ? item.duration
+            : FALLBACK_DURATION;
+
+        if (globalTime <= acc + d || i === items.length - 1) {
+          const within = Math.max(0, Math.min(globalTime - acc, d));
           return {
+            currentItem: item,
             currentIndex: i,
-            clipOffset: Math.max(0, Math.min(t, d)),
-            clipStartTime:
-              normalized.slice(0, i).reduce((sum, it) => sum + it.duration, 0) || 0,
+            timeInClip: within,
+            currentClipDuration: d,
+            offsetBeforeClip: acc,
           };
         }
-        t -= d;
+
+        acc += d;
       }
 
-      const last = normalized[normalized.length - 1];
-      const start =
-        normalized.slice(0, normalized.length - 1).reduce((s, it) => s + it.duration, 0) ||
-        0;
-      return { currentIndex: normalized.length - 1, clipOffset: last.duration, clipStartTime: start };
-    }, [normalized, playhead]);
+      // fallback
+      const last = items[items.length - 1];
+      const dLast =
+        typeof last.duration === "number" && last.duration > 0
+          ? last.duration
+          : FALLBACK_DURATION;
 
-    const currentItem = normalized[currentIndex];
+      return {
+        currentItem: last,
+        currentIndex: items.length - 1,
+        timeInClip: dLast,
+        currentClipDuration: dLast,
+        offsetBeforeClip: totalDuration - dLast,
+      };
+    }, [items, globalTime, totalDuration]);
 
-    // ------- PLAY / PAUSE LOOP (globális idő) -------
-
+    // Lejátszás loop – csak a globalTime-ot léptetjük, a többi ebből számolódik
     useEffect(() => {
-      if (!isPlaying || !normalized.length) return;
+      if (!isPlaying || totalDuration === 0) return;
 
-      let frame: number;
+      let frameId: number;
       let last = performance.now();
 
-      const tick = (now: number) => {
+      const loop = (now: number) => {
         const dt = (now - last) / 1000;
         last = now;
 
-        setPlayhead((prev) => {
-          const next = prev + dt;
-          if (next >= safeTotal) {
-            // elértük a végét
+        setGlobalTime((prev) => {
+          if (prev >= totalDuration) {
+            // vége
             setIsPlaying(false);
-            return safeTotal;
+            return totalDuration;
           }
-          return next;
+          const next = prev + dt;
+          return next > totalDuration ? totalDuration : next;
         });
 
-        frame = requestAnimationFrame(tick);
+        frameId = requestAnimationFrame(loop);
       };
 
-      frame = requestAnimationFrame(tick);
+      frameId = requestAnimationFrame(loop);
 
-      return () => cancelAnimationFrame(frame);
-    }, [isPlaying, normalized, safeTotal]);
+      return () => {
+        cancelAnimationFrame(frameId);
+      };
+    }, [isPlaying, totalDuration]);
 
-    // ------- VIDEÓ SZINKRONIZÁLÁS A PLAYHEADHEZ -------
-
+    // Aktuális videó betöltése + időre ugrás
     useEffect(() => {
-      const video = videoRef.current;
-      if (!video || !currentItem) return;
+      if (!currentItem || !videoRef.current) return;
 
-      if (currentItem.type !== "video") {
-        // képnél csak pauzáljuk a videót
-        if (!video.paused) video.pause();
+      const isVideo = currentItem.type === "video";
+
+      if (!isVideo) {
+        // Képeknél nem használjuk a videót
+        videoRef.current.pause();
         return;
       }
 
-      // ha másik klipre léptünk → forráscsere
-      const currentId = video.dataset.currentId;
-      if (currentId !== currentItem.id) {
-        video.dataset.currentId = currentItem.id;
-        video.src = currentItem.src || "";
-        video.load();
+      const videoElement = videoRef.current;
 
-        const onLoaded = () => {
-          video.currentTime = clipOffset;
-          if (isPlaying) {
-            video.play().catch(() => {});
-          }
+      // forrás meghatározása
+      const src =
+        currentItem.url ||
+        currentItem.thumbnail ||
+        (currentItem.file ? URL.createObjectURL(currentItem.file) : "");
+
+      if (!src) return;
+
+      const needsNewSrc = videoElement.getAttribute("data-src") !== src;
+
+      if (needsNewSrc) {
+        videoElement.setAttribute("data-src", src);
+        videoElement.src = src;
+        videoElement.load();
+        videoElement.onloadedmetadata = () => {
+          videoElement.currentTime = Math.min(
+            timeInClip,
+            videoElement.duration || timeInClip
+          );
         };
-
-        video.onloadedmetadata = onLoaded;
-        return;
-      }
-
-      // ugyanaz a klip: csak az időt szinkronizáljuk, ha nagyon elcsúszott
-      if (Math.abs(video.currentTime - clipOffset) > 0.3 && !Number.isNaN(clipOffset)) {
+      } else {
+        // csak seek
         try {
-          video.currentTime = clipOffset;
+          videoElement.currentTime = Math.min(
+            timeInClip,
+            videoElement.duration || timeInClip
+          );
         } catch {
-          // ignore
+          // ha még nem áll készen, nem baj
         }
       }
+    }, [currentItem, timeInClip]);
 
-      if (isPlaying && video.paused) {
-        video.play().catch(() => {});
-      }
-      if (!isPlaying && !video.paused) {
-        video.pause();
-      }
-    }, [currentItem, clipOffset, isPlaying]);
-
-    // ------- REF METÓDUSOK -------
-
+    // külső vezérlés
     useImperativeHandle(ref, () => ({
-      play: () => setIsPlaying(true),
-      pause: () => setIsPlaying(false),
-      startPlayback: () => {
-        setPlayhead(0);
+      play: () => {
+        if (totalDuration === 0) return;
         setIsPlaying(true);
       },
-      seekToStart: () => {
-        setPlayhead(0);
+      pause: () => {
+        setIsPlaying(false);
       },
     }));
 
-    // ------- SLIDEREK HANDLEREI -------
+    // Ha új média jön, reseteljük a previewt
+    useEffect(() => {
+      setGlobalTime(0);
+      setIsPlaying(false);
+    }, [items.length]);
 
-    const handleClipScrub = (value: number) => {
+    const handleClipSliderChange = (value: number) => {
       if (!currentItem) return;
-      const v = Number(value);
-      const newGlobal = clipStartTime + Math.min(Math.max(v, 0), currentItem.duration);
-      setPlayhead(newGlobal);
+      const clipped = Math.max(
+        0,
+        Math.min(value, currentClipDuration || FALLBACK_DURATION)
+      );
+      setIsPlaying(false);
+      setGlobalTime(offsetBeforeClip + clipped);
     };
 
-    const handleGlobalScrub = (value: number) => {
-      const v = Number(value);
-      setPlayhead(Math.min(Math.max(v, 0), safeTotal));
+    const handleTimelineSliderChange = (value: number) => {
+      const clipped = Math.max(0, Math.min(value, totalDuration || 0));
+      setIsPlaying(false);
+      setGlobalTime(clipped);
     };
 
-    const togglePlay = () => {
-      // ha a végén állunk és play, ugorjunk elejére
-      if (!isPlaying && playhead >= safeTotal - 0.01) {
-        setPlayhead(0);
+    const renderMedia = () => {
+      if (!currentItem) {
+        return (
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+            No media to preview
+          </div>
+        );
       }
-      setIsPlaying((p) => !p);
+
+      if (currentItem.type === "video") {
+        return (
+          <video
+            ref={videoRef}
+            className="w-full h-full object-contain bg-black"
+            muted
+          />
+        );
+      }
+
+      // image / titleCard / logoCard stb.
+      const src =
+        currentItem.thumbnail ||
+        currentItem.url ||
+        (currentItem.file ? URL.createObjectURL(currentItem.file) : "");
+
+      return (
+        <img
+          src={src}
+          alt="Preview"
+          className="w-full h-full object-contain bg-black"
+        />
+      );
     };
-
-    // ------- FORMÁZOTT IDŐK -------
-
-    const formatTime = (sec: number) => {
-      const s = Math.max(0, Math.floor(sec));
-      const m = Math.floor(s / 60);
-      const r = s % 60;
-      return `${m}:${r.toString().padStart(2, "0")}`;
-    };
-
-    const clipLabel =
-      currentItem?.label || `Clip ${currentIndex + 1}/${normalized.length || 1}`;
 
     return (
-      <Card className="border-border bg-card p-4 space-y-4">
-        {/* FŐ ELŐNÉZET */}
+      <Card className="p-4 lg:p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-semibold">Timeline Preview</h3>
+          <button
+            type="button"
+            onClick={() => setIsPlaying((p) => !p)}
+            className="text-xs px-3 py-1 rounded-full border border-border hover:bg-accent"
+            disabled={totalDuration === 0}
+          >
+            {isPlaying ? "Pause" : "Play"}
+          </button>
+        </div>
+
+        {/* Fő preview */}
         <div className="aspect-video rounded-lg overflow-hidden bg-black">
-          {currentItem ? (
-            currentItem.type === "video" ? (
-              <video
-                ref={videoRef}
-                className="w-full h-full object-contain"
-                preload="metadata"
-                muted
-              />
-            ) : (
-              <img
-                src={currentItem.src}
-                alt={clipLabel}
-                className="w-full h-full object-contain"
-              />
-            )
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-              Add media to preview your video.
-            </div>
-          )}
+          {renderMedia()}
         </div>
 
-        {/* FELSŐ SOR – PLAY + INFÓ */}
-        <div className="flex items-center justify-between gap-3 text-xs sm:text-sm">
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="h-8 w-8"
-              onClick={togglePlay}
-              disabled={!normalized.length}
-            >
-              {isPlaying ? (
-                <Pause className="w-4 h-4" />
-              ) : (
-                <Play className="w-4 h-4" />
-              )}
-            </Button>
-            <div className="flex flex-col">
-              <span className="font-medium">
-                {normalized.length > 0
-                  ? `Clip ${currentIndex + 1} / ${normalized.length}`
-                  : "No clips"}
-              </span>
-              {currentItem && (
-                <span className="text-muted-foreground text-[11px] sm:text-xs truncate max-w-[240px]">
-                  {clipLabel}
-                </span>
-              )}
-            </div>
+        {/* 1. csúszka – aktuális klip */}
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Current clip</span>
+            <span>
+              {timeInClip.toFixed(1)}s / {currentClipDuration.toFixed(1)}s
+            </span>
           </div>
-
-          {currentItem && (
-            <div className="text-right text-[11px] sm:text-xs text-muted-foreground">
-              <div>
-                Clip: {formatTime(clipOffset)} / {formatTime(currentItem.duration)}
-              </div>
-              <div>
-                Total: {formatTime(playhead)} / {formatTime(safeTotal)}
-              </div>
-            </div>
-          )}
+          <input
+            type="range"
+            min={0}
+            max={currentClipDuration || FALLBACK_DURATION}
+            step={0.05}
+            value={currentClipDuration ? timeInClip : 0}
+            onChange={(e) => handleClipSliderChange(Number(e.target.value))}
+            className="w-full"
+          />
         </div>
 
-        {/* CLIP PROGRESS (felső slider) */}
-        {currentItem && (
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>Current clip</span>
-              <span>
-                {formatTime(clipOffset)} / {formatTime(currentItem.duration)}
-              </span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={currentItem.duration}
-              step={0.05}
-              value={clipOffset}
-              onChange={(e) => handleClipScrub(Number(e.target.value))}
-              className="w-full"
-            />
+        {/* 2. csúszka – teljes timeline */}
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Full video</span>
+            <span>
+              {globalTime.toFixed(1)}s / {totalDuration.toFixed(1)}s
+            </span>
           </div>
-        )}
-
-        {/* GLOBAL PROGRESS (alsó slider) */}
-        {normalized.length > 0 && (
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>Full timeline</span>
-              <span>
-                {formatTime(playhead)} / {formatTime(safeTotal)}
-              </span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={safeTotal}
-              step={0.05}
-              value={playhead}
-              onChange={(e) => handleGlobalScrub(Number(e.target.value))}
-              className="w-full"
-            />
-          </div>
-        )}
+          <input
+            type="range"
+            min={0}
+            max={totalDuration || 0}
+            step={0.1}
+            value={globalTime}
+            onChange={(e) =>
+              handleTimelineSliderChange(Number(e.target.value))
+            }
+            className="w-full"
+          />
+        </div>
       </Card>
     );
   }
