@@ -5,23 +5,27 @@ import { Footer } from "@/components/Footer";
 import { ImageUploader } from "@/components/ImageUploader";
 import { VideoUploader } from "@/components/VideoUploader";
 import { AudioUploader } from "@/components/AudioUploader";
-import type { MediaItem, TextOverlay } from "@/components/Timeline";
+import type { MediaItem } from "@/components/Timeline";
 import { ImageEditor } from "@/components/ImageEditor";
 import { VideoEditor } from "@/components/VideoEditor";
 import { PreviewPanel, PreviewPanelRef } from "@/components/PreviewPanel";
-import { ExportPanel, ExportSettings } from "@/components/ExportPanel";
+import { ExportPanel } from "@/components/ExportPanel";
 import { VideoTitleStep } from "@/components/VideoTitleStep";
 import { Stepper, Step } from "@/components/Stepper";
 import { TextOverlayEditor } from "@/components/TextOverlayEditor";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { EditStep } from "@/components/EditStep";
-import { TitleCardCustomizer, TitleCardSettings } from "@/components/TitleCardCustomizer";
+import {
+  TitleCardCustomizer,
+  TitleCardSettings,
+} from "@/components/TitleCardCustomizer";
 import { Button } from "@/components/ui/button";
 import { TitleCardPreview } from "@/components/TitleCardPreview";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import logoImage from "@/assets/logo.png";
 import { getThemeById } from "@/lib/themes";
+import type { TransitionId } from "@/lib/transitions";
 
 const getVideoMetadata = (file: File): Promise<{
   duration: number;
@@ -50,6 +54,7 @@ const getVideoMetadata = (file: File): Promise<{
     video.src = url;
   });
 };
+
 const steps: Step[] = [
   { id: 1, title: "Title", description: "Video title" },
   { id: 2, title: "Images", description: "Upload images" },
@@ -59,8 +64,10 @@ const steps: Step[] = [
   { id: 6, title: "Preview & Export", description: "View and save" },
 ];
 
+const DEFAULT_TRANSITIONS: TransitionId[] = ["fade"];
+const DEFAULT_TRANSITION_DURATION = 0.4;
+
 const Index = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const previewPanelRef = useRef<PreviewPanelRef>(null);
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -70,22 +77,25 @@ const Index = () => {
   const [videoDate, setVideoDate] = useState("");
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [audioFiles, setAudioFiles] = useState<File[]>([]);
-  const [transitions, setTransitions] = useState<string[]>(["fade"]);
 
-  const [textOverlayItemId, setTextOverlayItemId] = useState<string | null>(null);
+  const [textOverlayItemId, setTextOverlayItemId] = useState<string | null>(
+    null
+  );
   const [selectedTheme, setSelectedTheme] = useState("classic");
 
-  const [titleCardSettings, setTitleCardSettings] = useState<TitleCardSettings>({
-    titleFontSize: 64,
-    titleColor: "#ffffff",
-    titleY: 150,
-    descriptionFontSize: 36,
-    descriptionColor: "#cccccc",
-    descriptionY: 300,
-    dateFontSize: 28,
-    dateColor: "#aaaaaa",
-    dateY: 500,
-  });
+  const [titleCardSettings, setTitleCardSettings] = useState<TitleCardSettings>(
+    {
+      titleFontSize: 64,
+      titleColor: "#ffffff",
+      titleY: 150,
+      descriptionFontSize: 36,
+      descriptionColor: "#cccccc",
+      descriptionY: 300,
+      dateFontSize: 28,
+      dateColor: "#aaaaaa",
+      dateY: 500,
+    }
+  );
 
   const [titleCardChangeKey, setTitleCardChangeKey] = useState(0);
 
@@ -102,18 +112,30 @@ const Index = () => {
     []
   );
 
-  // TITLE CARD CREATION LOGIC (unchanged)
+  // TITLE CARD CREATION LOGIC (unchanged – csak a 2. lépés preview-hoz)
   const createTitleCard = useCallback(
-    async (firstImage, title, description, date) => {
+    async (firstImage: File, title: string, description: string, date: string) => {
       const theme = getThemeById(selectedTheme);
 
       await document.fonts.ready;
 
-      return new Promise((resolve) => {
+      return new Promise<MediaItem>((resolve) => {
         const canvas = document.createElement("canvas");
         canvas.width = 1920;
         canvas.height = 1080;
         const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          const file = firstImage;
+          const thumb = URL.createObjectURL(file);
+          resolve({
+            id: "title-card",
+            file,
+            thumbnail: thumb,
+            duration: 4,
+            type: "titleCard",
+          } as any);
+          return;
+        }
 
         const img = new Image();
         img.onload = () => {
@@ -131,7 +153,12 @@ const Index = () => {
           ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
 
           if (theme.gradient) {
-            const g = ctx.createLinearGradient(imageWidth, 0, canvas.width, canvas.height);
+            const g = ctx.createLinearGradient(
+              imageWidth,
+              0,
+              canvas.width,
+              canvas.height
+            );
             g.addColorStop(0, theme.colors.background);
             g.addColorStop(1, theme.colors.accent);
             ctx.fillStyle = g;
@@ -147,9 +174,14 @@ const Index = () => {
           ctx.textAlign = "left";
           ctx.textBaseline = "top";
 
-          const wrap = (text, maxWidth, lineHeight, startY) => {
+          const wrap = (
+            text: string,
+            maxWidth: number,
+            lineHeight: number,
+            startY: number
+          ) => {
             if (!text) return startY;
-            let words = text.split(" ");
+            const words = text.split(" ");
             let line = "";
             let y = startY;
 
@@ -183,7 +215,22 @@ const Index = () => {
           }
 
           canvas.toBlob((blob) => {
-            const file = new File([blob], "title-card.png", { type: "image/png" });
+            if (!blob) {
+              const file = firstImage;
+              const thumb = URL.createObjectURL(file);
+              resolve({
+                id: "title-card",
+                file,
+                thumbnail: thumb,
+                duration: 4,
+                type: "titleCard",
+              } as any);
+              return;
+            }
+
+            const file = new File([blob], "title-card.png", {
+              type: "image/png",
+            });
             const thumb = URL.createObjectURL(blob);
             resolve({
               id: "title-card",
@@ -191,7 +238,7 @@ const Index = () => {
               thumbnail: thumb,
               duration: 4,
               type: "titleCard",
-            });
+            } as any);
           });
         };
 
@@ -204,56 +251,69 @@ const Index = () => {
   // AUTO ADD LOGO CARD
   useEffect(() => {
     const hasLogo = mediaItems.some((i) => i.type === "logoCard");
-    const hasContent = mediaItems.some((i) => i.type === "image" || i.type === "video");
+    const hasContent = mediaItems.some(
+      (i) => i.type === "image" || i.type === "video"
+    );
 
     if (!hasLogo && hasContent) {
       fetch(logoImage)
         .then((r) => r.blob())
         .then((blob) => {
-          const file = new File([blob], "snapmemo-logo.png", { type: "image/png" });
+          const file = new File([blob], "snapmemo-logo.png", {
+            type: "image/png",
+          });
 
-          setMediaItems((prev) => [...prev, {
-            id: "logo-end",
-            file,
-            thumbnail: logoImage,
-            duration: 2,
-            type: "logoCard",
-          }]);
+          setMediaItems((prev) => [
+            ...prev,
+            {
+              id: "logo-end",
+              file,
+              thumbnail: logoImage,
+              duration: 2,
+              type: "logoCard",
+            } as any,
+          ]);
         });
     }
   }, [mediaItems]);
 
   // IMAGE ADD
   const handleImagesAdded = useCallback(
-    async (files) => {
-      const newItems = files.map((file) => ({
+    async (files: File[]) => {
+      const newItems: MediaItem[] = files.map((file) => ({
         id: Math.random().toString(36).slice(2),
         file,
         type: "image",
         duration: 3,
         thumbnail: URL.createObjectURL(file),
-      }));
+      })) as any;
 
-      const hasNoImages = mediaItems.filter(i => i.type === "image").length === 0;
+      const hasNoImages =
+        mediaItems.filter((i) => i.type === "image").length === 0;
 
-      setMediaItems(prev => [...prev, ...newItems]);
+      setMediaItems((prev) => [...prev, ...newItems]);
 
       if (hasNoImages && videoTitle && files.length > 0) {
-        const titleCard = await createTitleCard(files[0], videoTitle, videoDescription, videoDate);
-        setMediaItems(prev => [titleCard, ...prev]);
+        const titleCard = await createTitleCard(
+          files[0],
+          videoTitle,
+          videoDescription,
+          videoDate
+        );
+        setMediaItems((prev) => [titleCard, ...prev]);
       }
     },
     [mediaItems, videoTitle, videoDescription, videoDate, createTitleCard]
   );
 
   // REMOVE ITEM
-  const handleRemove = useCallback((id) => {
-    setMediaItems(prev => prev.filter(i => i.id !== id));
+  const handleRemove = useCallback((id: string) => {
+    setMediaItems((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
   // REORDER
-  const handleReorder = useCallback((from, to) => {
-    setMediaItems(prev => {
+  const handleReorder = useCallback((from: number, to: number) => {
+    setMediaItems((prev) => {
       const arr = [...prev];
       const [it] = arr.splice(from, 1);
       arr.splice(to, 0, it);
@@ -262,61 +322,49 @@ const Index = () => {
   }, []);
 
   // DURATION CHANGE
-  const handleDurationChange = useCallback((id, duration) => {
-    setMediaItems(prev => prev.map(i => i.id === id ? { ...i, duration } : i));
+  const handleDurationChange = useCallback((id: string, duration: number) => {
+    setMediaItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, duration } : i))
+    );
   }, []);
 
   // FOCAL POINT
-  const handleFocalPointChange = useCallback((id, f) => {
-    setMediaItems(prev => prev.map(i => i.id === id ? { ...i, focalPoint: f } : i));
+  const handleFocalPointChange = useCallback((id: string, f: any) => {
+    setMediaItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, focalPoint: f } : i))
+    );
   }, []);
 
- // VIDEO ADD – metaadat (hossz + felbontás) kiolvasással
-const handleVideosAdded = useCallback(async (files: File[]) => {
-  const metas = await Promise.all(
-    files.map((file) => getVideoMetadata(file))
-  );
+  // VIDEO ADD – metaadat
+  const handleVideosAdded = useCallback(async (files: File[]) => {
+    const metas = await Promise.all(files.map((file) => getVideoMetadata(file)));
 
-  const items = files.map<MediaItem>((file, index) => {
-    const meta = metas[index];
-    const duration =
-      meta.duration && meta.duration > 0 ? meta.duration : undefined;
+    const items = files.map<MediaItem>((file, index) => {
+      const meta = metas[index];
+      const duration =
+        meta.duration && meta.duration > 0 ? meta.duration : undefined;
 
-    return {
-      id: Math.random().toString(36).slice(2),
-      file,
-      type: "video",
-      duration,
-      videoLength: duration,
-      width: meta.width || undefined,
-      height: meta.height || undefined,
-      thumbnail: meta.url,
-      url: meta.url,
-      clips: [],
-    };
-  });
+      return {
+        id: Math.random().toString(36).slice(2),
+        file,
+        type: "video",
+        duration,
+        videoLength: duration,
+        width: meta.width || undefined,
+        height: meta.height || undefined,
+        thumbnail: meta.url,
+        url: meta.url,
+        clips: [],
+      } as any;
+    });
 
-  setMediaItems((prev) => [...prev, ...items]);
-}, []);
+    setMediaItems((prev) => [...prev, ...items]);
+  }, []);
 
-
-  // EXPORT
-const calculateTotalDuration = useCallback(() => {
-  let total = mediaItems.reduce((t, i) => t + (i.duration ?? 0), 0);
-  if (videoLocation) total += 3;
-  return total;
-}, [mediaItems, videoLocation]);
-
-
-  const handleExport = useCallback((settings) => {
-    if (previewPanelRef.current)
-      previewPanelRef.current.startPlayback();
-
-    return calculateTotalDuration();
-  }, [calculateTotalDuration]);
-
-  const getImageCount = () => mediaItems.filter(i => i.type === "image").length;
-  const getVideoCount = () => mediaItems.filter(i => i.type === "video").length;
+  const getImageCount = () =>
+    mediaItems.filter((i) => i.type === "image").length;
+  const getVideoCount = () =>
+    mediaItems.filter((i) => i.type === "video").length;
 
   const canGoNext = () => {
     if (currentStep === 2 && getImageCount() === 0) return false;
@@ -325,6 +373,17 @@ const calculateTotalDuration = useCallback(() => {
   };
 
   const canGoPrev = () => currentStep > 1;
+
+  // Step 6-hoz: rendezett sorrend + csak videók a preview/exporthoz
+  const orderedItems = [
+    ...mediaItems.filter((i) => i.type === "titleCard"),
+    ...mediaItems.filter(
+      (i) => i.type !== "titleCard" && i.type !== "logoCard"
+    ),
+    ...mediaItems.filter((i) => i.type === "logoCard"),
+  ];
+
+  const videoItems = orderedItems.filter((i) => i.type === "video");
 
   // ---------------------------
   //           UI
@@ -342,12 +401,7 @@ const calculateTotalDuration = useCallback(() => {
         />
 
         <main className="pb-8">
-
-          {/* 
-          ──────────────────────────────────────────
-          STEP 1 — TITLE (Preview removed completely!) 
-          ──────────────────────────────────────────
-          */}
+          {/* STEP 1 — TITLE */}
           {currentStep === 1 && (
             <VideoTitleStep
               initialTitle={videoTitle}
@@ -359,43 +413,46 @@ const calculateTotalDuration = useCallback(() => {
             />
           )}
 
-          {/* 
-          ──────────────────────────────────────────
-          STEP 2 — IMAGES + TITLE CARD PREVIEW + CUSTOMIZER
-          ──────────────────────────────────────────
-          */}
+          {/* STEP 2 — IMAGES + TITLE CARD PREVIEW */}
           {currentStep === 2 && (
             <div className="max-w-7xl mx-auto space-y-6">
-              
               <div className="text-center space-y-2 mb-6">
                 <h2 className="text-2xl font-bold">Images & Title Card</h2>
-                <p className="text-muted-foreground">Upload images and customize your title card</p>
+                <p className="text-muted-foreground">
+                  Upload images and customize your title card
+                </p>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
                 {/* LEFT */}
                 <div className="space-y-6">
-
                   <ImageUploader onFilesAdded={handleImagesAdded} />
 
                   {getImageCount() > 0 && (
                     <div className="bg-card rounded-lg border border-border p-6">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold">Click images to set focal points</h3>
+                        <h3 className="text-lg font-semibold">
+                          Click images to set focal points
+                        </h3>
                         <p className="text-xs text-muted-foreground">
                           💡 Point 1 = Focus | Point 2 = Ken Burns target
                         </p>
                       </div>
 
                       <ImageEditor
-                        images={mediaItems.filter(i => i.type === "image")}
+                        images={mediaItems.filter(
+                          (i) => i.type === "image"
+                        ) as any}
                         onRemove={handleRemove}
                         onFocalPointChange={handleFocalPointChange}
                         onReorder={(from, to) => {
-                          const imgs = mediaItems.filter(i => i.type === "image");
+                          const imgs = mediaItems.filter(
+                            (i) => i.type === "image"
+                          );
                           const all = [...mediaItems];
-                          const imageIdx = all.map((i, idx) => i.type === "image" ? idx : -1).filter(idx => idx >= 0);
+                          const imageIdx = all
+                            .map((i, idx) => (i.type === "image" ? idx : -1))
+                            .filter((idx) => idx >= 0);
                           handleReorder(imageIdx[from], imageIdx[to]);
                         }}
                       />
@@ -405,24 +462,27 @@ const calculateTotalDuration = useCallback(() => {
 
                 {/* RIGHT */}
                 <div className="space-y-6">
-
                   {/* Title Card Preview */}
                   <div className="bg-card rounded-lg border border-border p-6">
-                    <h3 className="text-lg font-semibold mb-2">Title Card Preview</h3>
+                    <h3 className="text-lg font-semibold mb-2">
+                      Title Card Preview
+                    </h3>
                     <p className="text-sm text-muted-foreground mb-4">
                       This is how your title card will appear
                     </p>
 
                     <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                 <TitleCardPreview
-  firstImage={mediaItems.find(i => i.type === "image")?.file}
-  title={videoTitle}
-  description={videoDescription}
-  date={videoDate}
-  settings={titleCardSettings}
-  selectedTheme={selectedTheme}
-/>
-
+                      <TitleCardPreview
+                        key={titleCardChangeKey}
+                        firstImage={
+                          mediaItems.find((i) => i.type === "image")?.file
+                        }
+                        title={videoTitle}
+                        description={videoDescription}
+                        date={videoDate}
+                        settings={titleCardSettings}
+                        selectedTheme={selectedTheme}
+                      />
                     </div>
                   </div>
 
@@ -432,7 +492,6 @@ const calculateTotalDuration = useCallback(() => {
                     onChange={setTitleCardSettings}
                   />
                 </div>
-
               </div>
             </div>
           )}
@@ -442,7 +501,9 @@ const calculateTotalDuration = useCallback(() => {
             <div className="max-w-6xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
                 <h2 className="text-2xl font-bold">Upload Videos</h2>
-                <p className="text-muted-foreground">Add videos and select the important clips</p>
+                <p className="text-muted-foreground">
+                  Add videos and select the important clips
+                </p>
               </div>
 
               <VideoUploader onFilesAdded={handleVideosAdded} />
@@ -450,15 +511,25 @@ const calculateTotalDuration = useCallback(() => {
               {getVideoCount() > 0 && (
                 <div className="bg-card rounded-lg border border-border p-6">
                   <VideoEditor
-                    videos={mediaItems.filter(i => i.type === "video")}
+                    videos={
+                      mediaItems.filter((i) => i.type === "video") as any
+                    }
                     onRemove={handleRemove}
                     onClipsChange={(id, c) => {
-                      setMediaItems(prev => prev.map(i => i.id === id ? { ...i, clips: c } : i));
+                      setMediaItems((prev) =>
+                        prev.map((i) =>
+                          i.id === id ? { ...i, clips: c } : i
+                        )
+                      );
                     }}
                     onReorder={(from, to) => {
-                      const vids = mediaItems.filter(i => i.type === "video");
+                      const vids = mediaItems.filter(
+                        (i) => i.type === "video"
+                      );
                       const all = [...mediaItems];
-                      const vidIdx = all.map((i, idx) => i.type === "video" ? idx : -1).filter(idx => idx >= 0);
+                      const vidIdx = all
+                        .map((i, idx) => (i.type === "video" ? idx : -1))
+                        .filter((idx) => idx >= 0);
                       handleReorder(vidIdx[from], vidIdx[to]);
                     }}
                   />
@@ -491,59 +562,42 @@ const calculateTotalDuration = useCallback(() => {
             <div className="max-w-2xl mx-auto space-y-6">
               <AudioUploader
                 audios={audioFiles}
-                onAudioAdded={(file) => setAudioFiles(prev => [...prev, file])}
-                onAudioRemoved={(i) => setAudioFiles(prev => prev.filter((_, idx) => idx !== i))}
+                onAudioAdded={(file) =>
+                  setAudioFiles((prev) => [...prev, file])
+                }
+                onAudioRemoved={(i) =>
+                  setAudioFiles((prev) =>
+                    prev.filter((_, idx) => idx !== i)
+                  )
+                }
               />
             </div>
           )}
 
-          {/* STEP 6 – PREVIEW & EXPORT */}
+          {/* STEP 6 – PREVIEW & EXPORT (csak videók) */}
           {currentStep === 6 && (
             <div className="max-w-6xl mx-auto space-y-6">
-
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold">Preview and Export</h2>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
                 <div className="lg:col-span-2 space-y-4">
-              <PreviewPanel
-  ref={previewPanelRef}
-  items={[
-    // 1) Title card mindig elöl
-    ...mediaItems.filter((i) => i.type === "titleCard"),
-
-    // 2) Középen minden más, címkártya és logo nélkül
-    ...mediaItems.filter(
-      (i) => i.type !== "titleCard" && i.type !== "logoCard"
-    ),
-
-    // 3) SnapMemo logo mindig a legvégén
-    ...mediaItems.filter((i) => i.type === "logoCard"),
-  ]}
-  audioFile={audioFiles.length > 0 ? audioFiles[0] : null}
-  transitions={transitions}
-  location={videoLocation}
-  videoTitle={videoTitle}
-  videoDescription={videoDescription}
-  videoDate={videoDate}
-  canvasRef={canvasRef}
-  selectedTheme={selectedTheme}
-  titleCardSettings={titleCardSettings}
-  onTitleCardChange={() => setTitleCardChangeKey((k) => k + 1)}
-/>
+                  <PreviewPanel
+                    ref={previewPanelRef}
+                    items={videoItems}
+                    selectedTransitions={DEFAULT_TRANSITIONS}
+                    transitionDuration={DEFAULT_TRANSITION_DURATION}
+                  />
                 </div>
 
                 <div className="lg:col-span-1">
                   <ExportPanel
-                    onExport={handleExport}
-                    disabled={mediaItems.length === 0}
-                    canvasRef={canvasRef}
-                    totalDuration={calculateTotalDuration()}
+                    items={videoItems}
+                    selectedTransitions={DEFAULT_TRANSITIONS}
+                    transitionDuration={DEFAULT_TRANSITION_DURATION}
                   />
                 </div>
-
               </div>
             </div>
           )}
@@ -552,7 +606,7 @@ const calculateTotalDuration = useCallback(() => {
           {currentStep > 1 && (
             <div className="flex justify-between max-w-6xl mx-auto mt-8">
               <Button
-                onClick={() => setCurrentStep(s => s - 1)}
+                onClick={() => setCurrentStep((s) => s - 1)}
                 variant="outline"
                 size="lg"
                 disabled={!canGoPrev()}
@@ -564,7 +618,7 @@ const calculateTotalDuration = useCallback(() => {
 
               {currentStep < 6 && (
                 <Button
-                  onClick={() => setCurrentStep(s => s + 1)}
+                  onClick={() => setCurrentStep((s) => s + 1)}
                   size="lg"
                   disabled={!canGoNext()}
                   className="gap-2"
@@ -579,22 +633,27 @@ const calculateTotalDuration = useCallback(() => {
       </div>
 
       {/* OVERLAY EDITOR */}
-      {textOverlayItemId && (() => {
-        const item = mediaItems.find(i => i.id === textOverlayItemId);
-        if (!item) return null;
-        return (
-          <TextOverlayEditor
-            itemId={item.id}
-            itemName={item.file.name}
-            overlays={item.textOverlays || []}
-            onSave={(o) =>
-              setMediaItems(prev => prev.map(i => i.id === item.id ? { ...i, textOverlays: o } : i))
-            }
-            onClose={() => setTextOverlayItemId(null)}
-            selectedTheme={selectedTheme}
-          />
-        );
-      })()}
+      {textOverlayItemId &&
+        (() => {
+          const item = mediaItems.find((i) => i.id === textOverlayItemId);
+          if (!item || !item.file) return null;
+          return (
+            <TextOverlayEditor
+              itemId={item.id}
+              itemName={item.file.name}
+              overlays={(item as any).textOverlays || []}
+              onSave={(o) =>
+                setMediaItems((prev) =>
+                  prev.map((i) =>
+                    i.id === item.id ? { ...i, textOverlays: o } : i
+                  )
+                )
+              }
+              onClose={() => setTextOverlayItemId(null)}
+              selectedTheme={selectedTheme}
+            />
+          );
+        })()}
 
       <Footer />
     </div>
