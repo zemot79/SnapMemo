@@ -62,65 +62,151 @@ function loadScript(src: string) {
 export interface ExportSettings {}
 
 // ======================================================================
-// EXPORT PANEL – jelenleg: csak videókat fűz össze
+// EXPORT PANEL – Title card + videos + logo card export
 // ======================================================================
 
+type ExportItem = {
+  id: string;
+  type: string;
+  url?: string;
+  thumbnail?: string;
+  file?: File;
+  duration?: number;
+};
+
 interface ExportPanelProps {
-  items: {
-    id: string;
-    type: string;
-    url?: string;
-    thumbnail?: string;
-    file?: File;
-    duration?: number;
-  }[];
+  items: ExportItem[];
   selectedTransitions: TransitionId[];
   transitionDuration: number;
+  titleCardDuration: number; // sliderből jön
 }
 
 export const ExportPanel = ({
   items,
   selectedTransitions,
   transitionDuration,
+  titleCardDuration,
 }: ExportPanelProps) => {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
   const handleExport = async () => {
-    if (items.length === 0) return;
+    if (!items || items.length === 0) return;
 
     setLoading(true);
     setProgress(0);
 
     const { ffmpeg, fetchFile } = await loadFFmpeg(setProgress);
 
-    // 1) Input fájlok betöltése – feltételezzük, hogy videók
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
+    // --- 1) Sorrend felépítése: Title -> Videók -> Logo ---
+    const titleItem = items.find((i) => i.type === "titleCard");
+    const logoItem = items.find((i) => i.type === "logoCard");
+    const videoItems = items.filter((i) => i.type === "video");
 
-      let blob: Blob;
+    type Scene = {
+      kind: "title" | "video" | "logo";
+      item: ExportItem;
+      duration: number;
+    };
 
-      if (item.file) {
-        blob = item.file;
-      } else {
-        const res = await fetch(item.url || item.thumbnail || "");
-        blob = await res.blob();
-      }
+    const scenes: Scene[] = [];
 
-      const data = await fetchFile(blob);
-      ffmpeg.FS("writeFile", `clip${i}.mp4`, data);
+    if (titleItem) {
+      scenes.push({
+        kind: "title",
+        item: titleItem,
+        duration: Math.max(2, Math.min(12, titleCardDuration || 4)),
+      });
     }
 
-    // 2) Transition lánc
+    for (const v of videoItems) {
+      const d = v.duration && v.duration > 0 ? v.duration : 3;
+      scenes.push({
+        kind: "video",
+        item: v,
+        duration: d,
+      });
+    }
+
+    if (logoItem) {
+      scenes.push({
+        kind: "logo",
+        item: logoItem,
+        duration: 2, // fix 2 mp
+      });
+    }
+
+    if (scenes.length === 0) {
+      setLoading(false);
+      return;
+    }
+
+    // Pseudo items csak a transition maphez – duration a fontos
+    const pseudoForTransitions = scenes.map((s, index) => ({
+      id: s.item.id || `scene-${index}`,
+      duration: s.duration,
+      type: s.item.type,
+    })) as any[];
+
     const transitions = buildTransitionMap(
-      items,
+      pseudoForTransitions,
       selectedTransitions,
       transitionDuration
     );
 
-    const filterParts: string[] = [];
-    const inputs = items.map((_, i) => `-i clip${i}.mp4`);
+    // --- 2) Fájlok előkészítése: minden scene -> clip{i}.mp4 ---
+    for (let index = 0; index < scenes.length; index++) {
+      const scene = scenes[index];
+      const fileName = `clip${index}.mp4`;
 
+      if (scene.kind === "video") {
+        const item = scene.item;
+
+        let blob: Blob;
+
+        if (item.file) {
+          blob = item.file;
+        } else {
+          const res = await fetch(item.url || item.thumbnail || "");
+          blob = await res.blob();
+        }
+
+        const data = await fetchFile(blob);
+        ffmpeg.FS("writeFile", fileName, data);
+      } else {
+        // title / logo -> kép -> MP4
+        const imgItem = scene.item;
+
+        let blob: Blob;
+        if (imgItem.file) {
+          blob = imgItem.file;
+        } else {
+          const res = await fetch(imgItem.url || imgItem.thumbnail || "");
+          blob = await res.blob();
+        }
+
+        const data = await fetchFile(blob);
+        const imgName = `img${index}.png`;
+        ffmpeg.FS("writeFile", imgName, data);
+
+        await ffmpeg.run(
+          "-loop",
+          "1",
+          "-t",
+          String(scene.duration),
+          "-i",
+          imgName,
+          "-vf",
+          "scale=1920:1080",
+          fileName
+        );
+      }
+    }
+
+    // --- 3) Transition lánc felépítése ---
+    const inputs = scenes.map((_, i) => `-i clip${i}.mp4`);
+
+    const filterParts: string[] = [];
     let chainIdx = 0;
     let prev = "";
 
@@ -173,7 +259,7 @@ export const ExportPanel = ({
       </h3>
 
       <p className="text-sm text-muted-foreground">
-        Render and download your final video.
+        Render and download your final video, including title & logo cards.
       </p>
 
       <Button
