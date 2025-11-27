@@ -34,26 +34,31 @@ export const PreviewPanel = forwardRef<
     transitionDuration
   );
 
-  // -------------------------------------------------------
-  // CORE PLAY / PAUSE
-  // -------------------------------------------------------
+  // ======================================================
+  // Extern API: play(), pause()
+  // ======================================================
   useImperativeHandle(ref, () => ({
     play: () => videoRef.current?.play(),
     pause: () => videoRef.current?.pause(),
   }));
 
-  // -------------------------------------------------------
-  // LOAD NEXT CLIP
-  // -------------------------------------------------------
+  // ======================================================
+  // Clip betöltése
+  // ======================================================
   const loadClip = (index: number) => {
     if (!videoRef.current) return;
 
     const item = items[index];
-
     if (!item) return;
 
-    videoRef.current.src =
-      item.url || item.thumbnail || item.fileUrl || "";
+    // Ha File van, URL-t generálunk
+    if (item.file instanceof File) {
+      const url = URL.createObjectURL(item.file);
+      videoRef.current.src = url;
+    } else {
+      videoRef.current.src =
+        item.url || item.thumbnail || item.fileUrl || "";
+    }
 
     videoRef.current.load();
   };
@@ -62,41 +67,37 @@ export const PreviewPanel = forwardRef<
     loadClip(0);
   }, [items]);
 
-  // -------------------------------------------------------
-  // ON VIDEO END → Transition or Next
-  // -------------------------------------------------------
+  // ======================================================
+  // Video end → transition → next
+  // ======================================================
   const handleEnded = () => {
-    const nextIndex = currentIndex + 1;
+    const next = currentIndex + 1;
 
-    if (nextIndex >= items.length) return;
+    if (next >= items.length) return;
 
-    const transition = transitions[currentIndex];
+    const tr = transitions[currentIndex];
 
-    if (!transition) {
-      setCurrentIndex(nextIndex);
-      loadClip(nextIndex);
+    if (!tr) {
+      setCurrentIndex(next);
+      loadClip(next);
       videoRef.current?.play();
       return;
     }
 
-    // run CSS transition
     setIsTransitioning(true);
 
     setTimeout(() => {
       setIsTransitioning(false);
-      setCurrentIndex(nextIndex);
-      loadClip(nextIndex);
+      setCurrentIndex(next);
+      loadClip(next);
       videoRef.current?.play();
-    }, transition.duration * 1000);
+    }, tr.duration * 1000);
   };
 
   return (
     <Card className="relative w-full aspect-video bg-black overflow-hidden rounded-xl shadow-lg">
-      {/* Transition overlay */}
       {isTransitioning && (
-        <div
-          className="absolute inset-0 z-20 transition-all duration-500 bg-black/80"
-        />
+        <div className="absolute inset-0 z-20 transition-all duration-500 bg-black/80" />
       )}
 
       <video
