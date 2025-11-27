@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import logoImage from "@/assets/logo.png";
 import { getThemeById } from "@/lib/themes";
 import type { TransitionId } from "@/lib/transitions";
+import { Slider } from "@/components/ui/slider";
 
 const getVideoMetadata = (file: File): Promise<{
   duration: number;
@@ -67,6 +68,15 @@ const steps: Step[] = [
 const DEFAULT_TRANSITIONS: TransitionId[] = ["fade"];
 const DEFAULT_TRANSITION_DURATION = 0.4;
 
+const sortMediaItems = (items: MediaItem[]): MediaItem[] => {
+  const title = items.filter((i) => i.type === "titleCard");
+  const middle = items.filter(
+    (i) => i.type !== "titleCard" && i.type !== "logoCard"
+  );
+  const logo = items.filter((i) => i.type === "logoCard");
+  return [...title, ...middle, ...logo];
+};
+
 const Index = () => {
   const previewPanelRef = useRef<PreviewPanelRef>(null);
   const [currentStep, setCurrentStep] = useState(1);
@@ -99,6 +109,9 @@ const Index = () => {
 
   const [titleCardChangeKey, setTitleCardChangeKey] = useState(0);
 
+  // Title card hossz slider (2–12s)
+  const [titleCardDuration, setTitleCardDuration] = useState<number>(4);
+
   const handleTitleNext = useCallback(
     (title, description, location, dateFrom, dateTo) => {
       setVideoTitle(title);
@@ -112,9 +125,14 @@ const Index = () => {
     []
   );
 
-  // TITLE CARD CREATION LOGIC (unchanged – csak a 2. lépés preview-hoz)
+  // TITLE CARD CREATION LOGIC – PNG létrehozás a 2. lépéshez
   const createTitleCard = useCallback(
-    async (firstImage: File, title: string, description: string, date: string) => {
+    async (
+      firstImage: File,
+      title: string,
+      description: string,
+      date: string
+    ) => {
       const theme = getThemeById(selectedTheme);
 
       await document.fonts.ready;
@@ -131,7 +149,7 @@ const Index = () => {
             id: "title-card",
             file,
             thumbnail: thumb,
-            duration: 4,
+            duration: titleCardDuration,
             type: "titleCard",
           } as any);
           return;
@@ -222,7 +240,7 @@ const Index = () => {
                 id: "title-card",
                 file,
                 thumbnail: thumb,
-                duration: 4,
+                duration: titleCardDuration,
                 type: "titleCard",
               } as any);
               return;
@@ -236,7 +254,7 @@ const Index = () => {
               id: "title-card",
               file,
               thumbnail: thumb,
-              duration: 4,
+              duration: titleCardDuration,
               type: "titleCard",
             } as any);
           });
@@ -245,7 +263,7 @@ const Index = () => {
         img.src = URL.createObjectURL(firstImage);
       });
     },
-    [selectedTheme]
+    [selectedTheme, titleCardDuration]
   );
 
   // AUTO ADD LOGO CARD
@@ -374,15 +392,8 @@ const Index = () => {
 
   const canGoPrev = () => currentStep > 1;
 
-  // Step 6-hoz: rendezett sorrend + csak videók a preview/exporthoz
-  const orderedItems = [
-    ...mediaItems.filter((i) => i.type === "titleCard"),
-    ...mediaItems.filter(
-      (i) => i.type !== "titleCard" && i.type !== "logoCard"
-    ),
-    ...mediaItems.filter((i) => i.type === "logoCard"),
-  ];
-
+  // Step 6-hoz: rendezett sorrend
+  const orderedItems = sortMediaItems(mediaItems);
   const videoItems = orderedItems.filter((i) => i.type === "video");
 
   // ---------------------------
@@ -413,7 +424,7 @@ const Index = () => {
             />
           )}
 
-          {/* STEP 2 — IMAGES + TITLE CARD PREVIEW */}
+          {/* STEP 2 — IMAGES + TITLE CARD PREVIEW + TITLE DURATION SLIDER */}
           {currentStep === 2 && (
             <div className="max-w-7xl mx-auto space-y-6">
               <div className="text-center space-y-2 mb-6">
@@ -491,6 +502,32 @@ const Index = () => {
                     settings={titleCardSettings}
                     onChange={setTitleCardSettings}
                   />
+
+                  {/* Title Card Duration Slider */}
+                  <div className="bg-card rounded-lg border border-border p-6">
+                    <h3 className="text-lg font-semibold mb-2">
+                      Title Card Duration
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Set how long the title card appears at the beginning of
+                      your final video.
+                    </p>
+                    <div className="flex items-center gap-4">
+                      <Slider
+                        value={[titleCardDuration]}
+                        min={2}
+                        max={12}
+                        step={1}
+                        onValueChange={(v) =>
+                          setTitleCardDuration(v[0] ?? 4)
+                        }
+                        className="flex-1"
+                      />
+                      <span className="text-sm text-muted-foreground w-10 text-right">
+                        {titleCardDuration}s
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -538,10 +575,10 @@ const Index = () => {
             </div>
           )}
 
-          {/* STEP 4 – EDIT & TIMELINE */}
+          {/* STEP 4 – EDIT & TIMELINE (Title mindig elöl, logo mindig hátul) */}
           {currentStep === 4 && (
             <EditStep
-              items={mediaItems}
+              items={sortMediaItems(mediaItems)}
               selectedTheme={selectedTheme}
               onThemeChange={setSelectedTheme}
               onRemove={handleRemove}
@@ -574,7 +611,7 @@ const Index = () => {
             </div>
           )}
 
-          {/* STEP 6 – PREVIEW & EXPORT (csak videók) */}
+          {/* STEP 6 – PREVIEW & EXPORT */}
           {currentStep === 6 && (
             <div className="max-w-6xl mx-auto space-y-6">
               <div className="text-center mb-6">
@@ -593,9 +630,10 @@ const Index = () => {
 
                 <div className="lg:col-span-1">
                   <ExportPanel
-                    items={videoItems}
+                    items={orderedItems}
                     selectedTransitions={DEFAULT_TRANSITIONS}
                     transitionDuration={DEFAULT_TRANSITION_DURATION}
+                    titleCardDuration={titleCardDuration}
                   />
                 </div>
               </div>
