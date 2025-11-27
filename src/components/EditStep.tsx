@@ -3,16 +3,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { Timeline, MediaItem } from "@/components/Timeline";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import {
-  Play,
-  Sparkles,
-  Type,
-  Music,
-} from "lucide-react";
+import { Play, Sparkles, Type, Music } from "lucide-react";
+import { PreviewPanel } from "@/components/PreviewPanel";
 
 type KenBurnsSettings = {
   enabled: boolean;
@@ -69,28 +64,29 @@ export const EditStep = ({
   const [selectedTransitions, setSelectedTransitions] =
     useState<TransitionId[]>(["fade"]);
   const [transitionDuration, setTransitionDuration] = useState<number>(0.4);
-  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
 
-  // E: timeline sorrendezés – title mindig elöl, logo mindig hátul
+  // 1) Rendezett lista: Title card elöl, Logo hátul
   const orderedItems = useMemo(() => {
-    const title = items.filter((i) => i.type === "titleCard");
+    const titles = items.filter((i) => i.type === "titleCard");
+    const logos = items.filter((i) => i.type === "logoCard");
     const middle = items.filter(
       (i) => i.type !== "titleCard" && i.type !== "logoCard"
     );
-    const logo = items.filter((i) => i.type === "logoCard");
-    return [...title, ...middle, ...logo];
-  }, [items]);
 
-  // Clip preview: alapból az első timeline-elem (így a Title card)
-  const previewItem = useMemo(() => {
-    if (!orderedItems.length) return null;
+    let merged: MediaItem[] = [...titles, ...middle, ...logos];
 
-    if (selectedClipId) {
-      return orderedItems.find((i) => i.id === selectedClipId) || null;
+    // 2) Dupla első kép kiszedése:
+    // ha van titleCard ÉS van image, az első image-et elrejtjük a timeline-ból,
+    // hogy ne jelenjen meg kétszer (title + külön kép).
+    if (titles.length > 0) {
+      const firstImageIndex = merged.findIndex((i) => i.type === "image");
+      if (firstImageIndex !== -1) {
+        merged = merged.filter((_, idx) => idx !== firstImageIndex);
+      }
     }
 
-    return orderedItems[0];
-  }, [orderedItems, selectedClipId]);
+    return merged;
+  }, [items]);
 
   const toggleTransition = (id: TransitionId) => {
     setSelectedTransitions((prev) =>
@@ -108,6 +104,7 @@ export const EditStep = ({
       </div>
 
       <Tabs defaultValue="media" className="w-full">
+        {/* TAB HEADERS */}
         <TabsList className="mx-auto mb-4 w-fit">
           <TabsTrigger value="media" className="px-6">
             Media
@@ -120,19 +117,11 @@ export const EditStep = ({
           </TabsTrigger>
         </TabsList>
 
-        {/* MEDIA TAB */}
+        {/* ---------- MEDIA TAB ---------- */}
         <TabsContent value="media" className="mt-0">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            {/* TIMELINE */}
-            <div
-              className="space-y-6"
-              onClickCapture={(e) => {
-                const id = (e.target as HTMLElement)
-                  ?.closest("[data-id]")
-                  ?.getAttribute("data-id");
-                if (id) setSelectedClipId(id);
-              }}
-            >
+            {/* ---- TIMELINE ---- */}
+            <div className="space-y-6">
               <Card className="border-border">
                 <div className="p-4 pb-0">
                   <h3 className="text-base font-semibold">Timeline</h3>
@@ -153,44 +142,28 @@ export const EditStep = ({
               </Card>
             </div>
 
-            {/* RIGHT SIDE */}
+            {/* ---- JOBB OLDAL: PREVIEW + THEME + TRANSITIONS ---- */}
             <div className="space-y-6">
-              {/* CLIP PREVIEW */}
+              {/* CLIP / TIMELINE PREVIEW – ugyanaz a logika, mint a 6. lépésben */}
               <Card className="border-border">
                 <div className="p-5 pb-0">
                   <h3 className="text-base font-semibold flex items-center gap-2">
                     <Play className="w-4 h-4 text-primary" />
                     Clip Preview
                   </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Preview the full timeline including title & logo cards.
+                  </p>
                 </div>
-
                 <div className="p-4">
-                  {previewItem ? (
-                    <div className="aspect-video rounded-lg overflow-hidden w-full bg-black">
-                      {previewItem.type === "video" ? (
-                        <video
-                          src={previewItem.url || previewItem.thumbnail}
-                          className="w-full h-full object-contain"
-                          controls
-                          preload="metadata"
-                        />
-                      ) : (
-                        <img
-                          src={previewItem.thumbnail || previewItem.url}
-                          alt="Preview"
-                          className="w-full h-full object-contain"
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    <div className="aspect-video flex items-center justify-center bg-muted rounded-lg">
-                      No preview available
-                    </div>
-                  )}
+                  <PreviewPanel
+                    items={orderedItems}
+                    selectedTheme={selectedTheme}
+                  />
                 </div>
               </Card>
 
-              {/* THEME */}
+              {/* THEME SELECTOR */}
               <ThemeSelector
                 selectedTheme={selectedTheme}
                 onThemeChange={onThemeChange}
@@ -250,7 +223,7 @@ export const EditStep = ({
           </div>
         </TabsContent>
 
-        {/* TEXT TAB */}
+        {/* ---------- TEXT TAB ---------- */}
         <TabsContent value="text">
           <Card className="p-6 space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -263,7 +236,7 @@ export const EditStep = ({
           </Card>
         </TabsContent>
 
-        {/* AUDIO TAB */}
+        {/* ---------- AUDIO TAB ---------- */}
         <TabsContent value="audio">
           <Card className="p-6 space-y-3">
             <h3 className="text-lg font-semibold flex items-center gap-2">
