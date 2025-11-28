@@ -154,10 +154,12 @@ const toggleTransition = (id: TransitionId) => {
                   </p>
                 </div>
                 <div className="p-4">
-                  <PreviewPanel
-                    items={orderedItems}
-                    selectedTheme={selectedTheme}
-                  />
+             <PreviewPanel
+  items={orderedItems}
+  selectedTheme={selectedTheme}
+  selectedTransitions={selectedTransitions}
+  transitionDuration={transitionDuration}
+/>
                 </div>
               </Card>
 
