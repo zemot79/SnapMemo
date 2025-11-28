@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ThemeSelector } from "@/components/ThemeSelector";
 import { Timeline, MediaItem } from "@/components/Timeline";
@@ -29,14 +29,14 @@ const AVAILABLE_TRANSITIONS: {
   label: string;
   description: string;
 }[] = [
-  { id: "fade", label: "Fade", description: "Classic smooth dissolve between clips" },
-  { id: "crossDissolve", label: "Cross dissolve", description: "Video editor standard cross fade" },
-  { id: "dipBlack", label: "Dip to black", description: "Quick fade to black between scenes" },
-  { id: "slide", label: "Slide", description: "Modern horizontal slide transition" },
-  { id: "zoom", label: "Zoom punch", description: "Fast punch-in zoom effect" },
-  { id: "glitch", label: "Glitch", description: "Edgy digital glitch effect" },
-  { id: "blur", label: "Blur fade", description: "Quick blur + fade combo" },
-  { id: "filmBurn", label: "Film burn", description: "Retro light-leak style burn" },
+  { id: "fade", label: "Fade", description: "Classic smooth dissolve" },
+  { id: "crossDissolve", label: "Cross dissolve", description: "Standard XF" },
+  { id: "dipBlack", label: "Dip to black", description: "Fade to black" },
+  { id: "slide", label: "Slide", description: "Modern slide" },
+  { id: "zoom", label: "Zoom punch", description: "Quick zoom punch" },
+  { id: "glitch", label: "Glitch", description: "Digital glitch" },
+  { id: "blur", label: "Blur fade", description: "Blur + fade" },
+  { id: "filmBurn", label: "Film burn", description: "Retro leak burn" },
 ];
 
 interface EditStepProps {
@@ -48,6 +48,13 @@ interface EditStepProps {
   onDurationChange: (id: string, duration: number) => void;
   onKenBurnsChange?: (id: string, kenBurns: KenBurnsSettings) => void;
   onTextOverlayClick?: (id: string) => void;
+
+  // **THIS IS THE CORRECT PLACE**
+  selectedTransitions: TransitionId[];
+  onSelectedTransitionsChange: (ids: TransitionId[]) => void;
+  transitionDuration: number;
+  onTransitionDurationChange: (value: number) => void;
+
   location?: string;
 }
 
@@ -60,71 +67,59 @@ export const EditStep = ({
   onDurationChange,
   onKenBurnsChange,
   onTextOverlayClick,
+
+  // **transition props**
+  selectedTransitions,
+  onSelectedTransitionsChange,
+  transitionDuration,
+  onTransitionDurationChange,
 }: EditStepProps) => {
-  selectedTransitions: TransitionId[];
-onSelectedTransitionsChange: (ids: TransitionId[]) => void;
-transitionDuration: number;
-onTransitionDurationChange: (n: number) => void;
+  // --- FILTER DUPLICATE FIRST IMAGE WHEN TITLECARD EXISTS ---
+  const orderedItems = useMemo(() => {
+    if (!items.length) return items;
 
+    const hasTitleCard = items.some((i) => i.type === "titleCard");
+    if (!hasTitleCard) return items;
 
-// 1) Rendezett lista: csak a dupla első kép kiszedése, sorrendhez nem nyúlunk
-const orderedItems = useMemo(() => {
-  if (!items.length) return items;
+    const firstImageIndex = items.findIndex((i) => i.type === "image");
+    if (firstImageIndex === -1) return items;
 
-  // Ha nincs titleCard, semmit nem buherálunk
-  const hasTitleCard = items.some((i) => i.type === "titleCard");
-  if (!hasTitleCard) return items;
+    return items.filter((_, idx) => idx !== firstImageIndex);
+  }, [items]);
 
-  // Ha van titleCard, az első IMAGE-t rejtjük el a timeline-ból,
-  // hogy ne legyen dupla (title + ugyanaz az első kép).
-  const firstImageIndex = items.findIndex((i) => i.type === "image");
-  if (firstImageIndex === -1) return items;
+  // --- TOGGLE TRANSITION ---
+  const toggleTransition = (id: TransitionId) => {
+    const newList = selectedTransitions.includes(id)
+      ? selectedTransitions.filter((t) => t !== id)
+      : [...selectedTransitions, id];
 
-  return items.filter((_, idx) => idx !== firstImageIndex);
-}, [items]);
-
-const toggleTransition = (id: TransitionId) => {
-  const newList = selectedTransitions.includes(id)
-    ? selectedTransitions.filter((t) => t !== id)
-    : [...selectedTransitions, id];
-
-  onSelectedTransitionsChange(newList);
-};
-
+    onSelectedTransitionsChange(newList);
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="text-center mb-2">
         <h2 className="text-2xl font-bold">Edit</h2>
-        <p className="text-muted-foreground">
-          Adjust media, text, and audio settings.
-        </p>
+        <p className="text-muted-foreground">Adjust timeline & transitions</p>
       </div>
 
       <Tabs defaultValue="media" className="w-full">
-        {/* TAB HEADERS */}
         <TabsList className="mx-auto mb-4 w-fit">
-          <TabsTrigger value="media" className="px-6">
-            Media
-          </TabsTrigger>
-          <TabsTrigger value="text" className="px-6">
-            Text
-          </TabsTrigger>
-          <TabsTrigger value="audio" className="px-6">
-            Audio
-          </TabsTrigger>
+          <TabsTrigger value="media">Media</TabsTrigger>
+          <TabsTrigger value="text">Text</TabsTrigger>
+          <TabsTrigger value="audio">Audio</TabsTrigger>
         </TabsList>
 
-        {/* ---------- MEDIA TAB ---------- */}
+        {/* MEDIA TAB */}
         <TabsContent value="media" className="mt-0">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            {/* ---- TIMELINE ---- */}
+            {/* TIMELINE */}
             <div className="space-y-6">
-              <Card className="border-border">
+              <Card>
                 <div className="p-4 pb-0">
                   <h3 className="text-base font-semibold">Timeline</h3>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Drag to reorder, change durations, open text overlays.
+                  <p className="text-xs text-muted-foreground">
+                    Drag media to change order
                   </p>
                 </div>
                 <div className="p-4 pt-0">
@@ -140,45 +135,36 @@ const toggleTransition = (id: TransitionId) => {
               </Card>
             </div>
 
-            {/* ---- JOBB OLDAL: PREVIEW + THEME + TRANSITIONS ---- */}
+            {/* RIGHT SIDE */}
             <div className="space-y-6">
-              {/* CLIP / TIMELINE PREVIEW – ugyanaz a logika, mint a 6. lépésben */}
-              <Card className="border-border">
+              <Card>
                 <div className="p-5 pb-0">
                   <h3 className="text-base font-semibold flex items-center gap-2">
                     <Play className="w-4 h-4 text-primary" />
                     Clip Preview
                   </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Preview the full timeline including title & logo cards.
-                  </p>
                 </div>
                 <div className="p-4">
-             <PreviewPanel
-  items={orderedItems}
-  selectedTheme={selectedTheme}
-  selectedTransitions={selectedTransitions}
-  transitionDuration={transitionDuration}
-/>
+                  <PreviewPanel
+                    items={orderedItems}
+                    selectedTheme={selectedTheme}
+                    selectedTransitions={selectedTransitions}
+                    transitionDuration={transitionDuration}
+                  />
                 </div>
               </Card>
 
-              {/* THEME SELECTOR */}
               <ThemeSelector
                 selectedTheme={selectedTheme}
                 onThemeChange={onThemeChange}
               />
 
-              {/* TRANSITIONS */}
-              <Card className="border-border">
+              <Card>
                 <div className="p-4 pb-2">
                   <h3 className="text-base font-semibold flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-primary" />
                     Transitions
                   </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Choose transitions to randomize between clips.
-                  </p>
                 </div>
 
                 <div className="px-4 pb-4 space-y-4">
@@ -186,19 +172,18 @@ const toggleTransition = (id: TransitionId) => {
                     {AVAILABLE_TRANSITIONS.map((t) => (
                       <label
                         key={t.id}
-                        className="flex items-start gap-2 rounded-md border border-border px-2 py-2 text-xs cursor-pointer hover:border-primary/60"
+                        className="flex items-start gap-2 rounded-md border px-2 py-2 text-xs cursor-pointer"
                       >
                         <Checkbox
                           checked={selectedTransitions.includes(t.id)}
                           onCheckedChange={() => toggleTransition(t.id)}
-                          className="mt-0.5"
                         />
-                        <span>
+                        <div>
                           <div className="font-medium">{t.label}</div>
                           <div className="text-[11px] text-muted-foreground">
                             {t.description}
                           </div>
-                        </span>
+                        </div>
                       </label>
                     ))}
                   </div>
@@ -210,7 +195,9 @@ const toggleTransition = (id: TransitionId) => {
                       min={0.2}
                       max={1}
                       step={0.1}
-                     onValueChange={(v) => onTransitionDurationChange(v[0] ?? 0.4)}
+                      onValueChange={(v) =>
+                        onTransitionDurationChange(v[0] ?? 0.4)
+                      }
                       className="flex-1"
                     />
                     <span className="text-xs text-muted-foreground w-10 text-right">
@@ -223,30 +210,14 @@ const toggleTransition = (id: TransitionId) => {
           </div>
         </TabsContent>
 
-        {/* ---------- TEXT TAB ---------- */}
+        {/* TEXT TAB */}
         <TabsContent value="text">
-          <Card className="p-6 space-y-3">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Type className="w-4 h-4 text-primary" />
-              Text Overlays
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Open text overlay editor inside the timeline.
-            </p>
-          </Card>
+          <Card className="p-6">Text overlays editor is inside the timeline.</Card>
         </TabsContent>
 
-        {/* ---------- AUDIO TAB ---------- */}
+        {/* AUDIO TAB */}
         <TabsContent value="audio">
-          <Card className="p-6 space-y-3">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Music className="w-4 h-4 text-primary" />
-              Background Music
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Audio settings coming soon.
-            </p>
-          </Card>
+          <Card className="p-6">Audio settings coming soon…</Card>
         </TabsContent>
       </Tabs>
     </div>
