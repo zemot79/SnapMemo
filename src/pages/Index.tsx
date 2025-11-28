@@ -92,6 +92,11 @@ const Index = () => {
     null
   );
   const [selectedTheme, setSelectedTheme] = useState("classic");
+  const [selectedTransitions, setSelectedTransitions] =
+    useState<TransitionId[]>(DEFAULT_TRANSITIONS);
+  const [transitionDuration, setTransitionDuration] = useState<number>(
+    DEFAULT_TRANSITION_DURATION
+  );
 
   const [titleCardSettings, setTitleCardSettings] = useState<TitleCardSettings>(
     {
@@ -111,13 +116,6 @@ const Index = () => {
 
   // Title card hossz slider (2–12s)
   const [titleCardDuration, setTitleCardDuration] = useState<number>(4);
-
-  // ÚJ: globális transition state (6. lépéshez is)
-  const [selectedTransitions, setSelectedTransitions] =
-    useState<TransitionId[]>(DEFAULT_TRANSITIONS);
-  const [transitionDuration, setTransitionDuration] = useState<number>(
-    DEFAULT_TRANSITION_DURATION
-  );
 
   const handleTitleNext = useCallback(
     (title, description, location, dateFrom, dateTo) => {
@@ -421,10 +419,6 @@ const Index = () => {
     );
   }, []);
 
-  // ---------------------------
-  //           UI
-  // ---------------------------
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -466,13 +460,32 @@ const Index = () => {
 
                   {getImageCount() > 0 && (
                     <div className="bg-card rounded-lg border border-border p-6">
-       <ImageEditor
-  images={mediaItems.filter((i) => i.type === "image") as any}
-  onRemove={handleRemove}
-  onDurationChange={handleDurationChange}
-  onFocalPointChange={handleFocalPointChange}
-  onReorder={handleReorder}
-/>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold">
+                          Click images to set focal points
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          💡 Point 1 = Focus | Point 2 = Ken Burns target
+                        </p>
+                      </div>
+
+                      <ImageEditor
+                        images={mediaItems.filter(
+                          (i) => i.type === "image"
+                        ) as any}
+                        onRemove={handleRemove}
+                        onFocalPointChange={handleFocalPointChange}
+                        onReorder={(from, to) => {
+                          const imgs = mediaItems.filter(
+                            (i) => i.type === "image"
+                          );
+                          const all = [...mediaItems];
+                          const imageIdx = all
+                            .map((i, idx) => (i.type === "image" ? idx : -1))
+                            .filter((idx) => idx >= 0);
+                          handleReorder(imageIdx[from], imageIdx[to]);
+                        }}
+                      />
                     </div>
                   )}
                 </div>
@@ -586,7 +599,7 @@ const Index = () => {
             </div>
           )}
 
-          {/* STEP 4 – EDIT & TIMELINE (transition state-et most még nem kötöm ide) */}
+          {/* STEP 4 – EDIT & TIMELINE */}
           {currentStep === 4 && (
             <EditStep
               items={getOrderedItems()}
@@ -601,6 +614,10 @@ const Index = () => {
                 );
               }}
               onTextOverlayClick={(id) => setTextOverlayItemId(id)}
+              selectedTransitions={selectedTransitions}
+              onSelectedTransitionsChange={setSelectedTransitions}
+              transitionDuration={transitionDuration}
+              onTransitionDurationChange={setTransitionDuration}
               location={videoLocation}
             />
           )}
@@ -634,6 +651,7 @@ const Index = () => {
                   <PreviewPanel
                     ref={previewPanelRef}
                     items={getOrderedItems()}
+                    selectedTheme={selectedTheme}
                     selectedTransitions={selectedTransitions}
                     transitionDuration={transitionDuration}
                   />
