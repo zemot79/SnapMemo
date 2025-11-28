@@ -334,6 +334,19 @@ const PreviewPanelInner = (
           {isPlaying ? "Pause" : "Play"}
         </button>
       </div>
+      {selectedTransitions && (
+  <div className="text-[10px] text-muted-foreground flex gap-1 flex-wrap mt-1">
+    {selectedTransitions.map((t) => (
+      <span
+        key={t}
+        className="px-1 py-[1px] border rounded bg-background/80"
+      >
+        {t}
+      </span>
+    ))}
+    <span>{(transitionDuration ?? 0.4).toFixed(1)}s</span>
+  </div>
+)}
 
       {/* FŐ ELŐNÉZET */}
       <div className="aspect-video rounded-lg overflow-hidden bg-black">
@@ -384,5 +397,23 @@ const PreviewPanelInner = (
     </Card>
   );
 };
-
+{/* TRANSITION MARKERS */}
+{clips.length > 1 && (
+  <div className="relative h-4 mt-1">
+    {(() => {
+      let acc = 0;
+      return clips.slice(0, -1).map((clip, index) => {
+        acc += clip.duration;
+        const left = (acc / totalDuration) * 100;
+        return (
+          <div
+            key={index}
+            className="absolute top-0 bottom-0 w-[2px] bg-primary/70"
+            style={{ left: `${left}%` }}
+          />
+        );
+      });
+    })()}
+  </div>
+)}
 export const PreviewPanel = forwardRef(PreviewPanelInner);
