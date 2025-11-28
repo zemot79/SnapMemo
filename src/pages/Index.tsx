@@ -112,6 +112,13 @@ const Index = () => {
   // Title card hossz slider (2–12s)
   const [titleCardDuration, setTitleCardDuration] = useState<number>(4);
 
+  // ÚJ: globális transition state (6. lépéshez is)
+  const [selectedTransitions, setSelectedTransitions] =
+    useState<TransitionId[]>(DEFAULT_TRANSITIONS);
+  const [transitionDuration, setTransitionDuration] = useState<number>(
+    DEFAULT_TRANSITION_DURATION
+  );
+
   const handleTitleNext = useCallback(
     (title, description, location, dateFrom, dateTo) => {
       setVideoTitle(title);
@@ -183,8 +190,9 @@ const Index = () => {
             g.addColorStop(0, theme.colors.background);
             g.addColorStop(1, theme.colors.accent);
             ctx.fillStyle = g;
-          } else ctx.fillStyle = theme.colors.background;
-
+          } else {
+            ctx.fillStyle = theme.colors.background;
+          }
           ctx.fillRect(imageWidth, 0, canvas.width - imageWidth, canvas.height);
 
           const textX = imageWidth + 40;
@@ -212,7 +220,9 @@ const Index = () => {
                 ctx.fillText(line, textX, y);
                 line = w + " ";
                 y += lineHeight;
-              } else line = test;
+              } else {
+                line = test;
+              }
             }
             ctx.fillText(line, textX, y);
             return y + lineHeight;
@@ -327,50 +337,6 @@ const Index = () => {
     [mediaItems, videoTitle, videoDescription, videoDate, createTitleCard]
   );
 
-  // REMOVE ITEM
-  const handleRemove = useCallback((id: string) => {
-    setMediaItems((prev) => prev.filter((i) => i.id !== id));
-  }, []);
-
-  // REORDER – TitleCard fixen elöl, LogoCard fixen hátul
-  const handleReorder = useCallback((from: number, to: number) => {
-    setMediaItems((prev) => {
-      const arr = [...prev];
-      const [moved] = arr.splice(from, 1);
-      arr.splice(to, 0, moved);
-
-      // Title card az elején
-      const titleIdx = arr.findIndex((i) => i.type === "titleCard");
-      if (titleIdx > 0) {
-        const [t] = arr.splice(titleIdx, 1);
-        arr.unshift(t);
-      }
-
-      // Logo a végén
-      const logoIdx = arr.findIndex((i) => i.type === "logoCard");
-      if (logoIdx !== -1 && logoIdx !== arr.length - 1) {
-        const [l] = arr.splice(logoIdx, 1);
-        arr.push(l);
-      }
-
-      return arr;
-    });
-  }, []);
-
-  // DURATION CHANGE
-  const handleDurationChange = useCallback((id: string, duration: number) => {
-    setMediaItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, duration } : i))
-    );
-  }, []);
-
-  // FOCAL POINT
-  const handleFocalPointChange = useCallback((id: string, f: any) => {
-    setMediaItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, focalPoint: f } : i))
-    );
-  }, []);
-
   // VIDEO ADD – metaadat
   const handleVideosAdded = useCallback(async (files: File[]) => {
     const metas = await Promise.all(files.map((file) => getVideoMetadata(file)));
@@ -398,28 +364,7 @@ const Index = () => {
   }, []);
 
   // SEGÉD: rendezett timeline (Title → köztesek → Logo)
-  const getOrderedItems = () => [
-    ...mediaItems.filter((i) => i.type === "titleCard"),
-    ...mediaItems.filter(
-      (i) => i.type !== "titleCard" && i.type !== "logoCard"
-    ),
-    ...mediaItems.filter((i) => i.type === "logoCard"),
-  ];
-
-  // Ugyanaz a logika, mint az EditStep-ben: ha van titleCard,
-  // az első képet kivesszük a timeline-ból, hogy ne legyen dupla
-  const getTimelineItems = () => {
-    const base = getOrderedItems();
-    if (!base.length) return base;
-
-    const hasTitleCard = base.some((i) => i.type === "titleCard");
-    if (!hasTitleCard) return base;
-
-    const firstImageIndex = base.findIndex((i) => i.type === "image");
-    if (firstImageIndex === -1) return base;
-
-    return base.filter((_, idx) => idx !== firstImageIndex);
-  };
+  const getOrderedItems = () => sortMediaItems(mediaItems);
 
   const getImageCount = () =>
     mediaItems.filter((i) => i.type === "image").length;
@@ -434,9 +379,47 @@ const Index = () => {
 
   const canGoPrev = () => currentStep > 1;
 
-  // Step 6-hoz: rendezett sorrend – ha kell máshol
-  const orderedItems = sortMediaItems(mediaItems);
-  const videoItems = orderedItems.filter((i) => i.type === "video");
+  // REMOVE ITEM
+  const handleRemove = useCallback((id: string) => {
+    setMediaItems((prev) => prev.filter((i) => i.id !== id));
+  }, []);
+
+  // REORDER – Title mindig elöl, Logo mindig hátul
+  const handleReorder = useCallback((from: number, to: number) => {
+    setMediaItems((prev) => {
+      const arr = [...prev];
+      const [moved] = arr.splice(from, 1);
+      arr.splice(to, 0, moved);
+
+      const titleIdx = arr.findIndex((i) => i.type === "titleCard");
+      if (titleIdx > 0) {
+        const [t] = arr.splice(titleIdx, 1);
+        arr.unshift(t);
+      }
+
+      const logoIdx = arr.findIndex((i) => i.type === "logoCard");
+      if (logoIdx !== -1 && logoIdx !== arr.length - 1) {
+        const [l] = arr.splice(logoIdx, 1);
+        arr.push(l);
+      }
+
+      return arr;
+    });
+  }, []);
+
+  // DURATION CHANGE
+  const handleDurationChange = useCallback((id: string, duration: number) => {
+    setMediaItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, duration } : i))
+    );
+  }, []);
+
+  // FOCAL POINT
+  const handleFocalPointChange = useCallback((id: string, f: any) => {
+    setMediaItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, focalPoint: f } : i))
+    );
+  }, []);
 
   // ---------------------------
   //           UI
@@ -483,46 +466,35 @@ const Index = () => {
 
                   {getImageCount() > 0 && (
                     <div className="bg-card rounded-lg border border-border p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold">
-                          Click images to set focal points
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          💡 Point 1 = Focus | Point 2 = Ken Burns target
-                        </p>
-                      </div>
-
                       <ImageEditor
-                        images={mediaItems.filter(
+                        items={mediaItems.filter(
                           (i) => i.type === "image"
                         ) as any}
                         onRemove={handleRemove}
+                        onDurationChange={handleDurationChange}
                         onFocalPointChange={handleFocalPointChange}
-                        onReorder={(from, to) => {
-                          const imgs = mediaItems.filter(
-                            (i) => i.type === "image"
-                          );
-                          const all = [...mediaItems];
-                          const imageIdx = all
-                            .map((i, idx) => (i.type === "image" ? idx : -1))
-                            .filter((idx) => idx >= 0);
-                          handleReorder(imageIdx[from], imageIdx[to]);
-                        }}
+                        onReorder={handleReorder}
                       />
                     </div>
                   )}
                 </div>
 
-                {/* RIGHT */}
+                {/* RIGHT – TITLE CARD PREVIEW + CUSTOMIZER + DURATION */}
                 <div className="space-y-6">
-                  {/* Title Card Preview */}
                   <div className="bg-card rounded-lg border border-border p-6">
-                    <h3 className="text-lg font-semibold mb-2">
-                      Title Card Preview
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      This is how your title card will appear
-                    </p>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">
+                        Title Card Preview
+                      </h3>
+                      <ThemeSelector
+                        selectedTheme={selectedTheme}
+                        onThemeChange={(theme) => {
+                          setSelectedTheme(theme);
+                          setTitleCardChangeKey((k) => k + 1);
+                        }}
+                      />
+                    </div>
+
                     <div className="aspect-video bg-black rounded-lg overflow-hidden">
                       <TitleCardPreview
                         key={titleCardChangeKey}
@@ -616,30 +588,14 @@ const Index = () => {
             </div>
           )}
 
-          {/* STEP 4 – EDIT & TIMELINE */}
+          {/* STEP 4 – EDIT & TIMELINE (transition state-et most még nem kötöm ide) */}
           {currentStep === 4 && (
             <EditStep
               items={getOrderedItems()}
               selectedTheme={selectedTheme}
               onThemeChange={setSelectedTheme}
               onRemove={handleRemove}
-              onReorder={(from, to) => {
-                // Timeline indexek → valós mediaItems indexek
-                const timelineItems = getTimelineItems();
-                const fromItem = timelineItems[from];
-                const toItem = timelineItems[to];
-                if (!fromItem || !toItem) return;
-
-                const fromIndex = mediaItems.findIndex(
-                  (i) => i.id === fromItem.id
-                );
-                const toIndex = mediaItems.findIndex(
-                  (i) => i.id === toItem.id
-                );
-                if (fromIndex === -1 || toIndex === -1) return;
-
-                handleReorder(fromIndex, toIndex);
-              }}
+              onReorder={handleReorder}
               onDurationChange={handleDurationChange}
               onKenBurnsChange={(id, kenBurns) => {
                 setMediaItems((prev) =>
@@ -679,16 +635,17 @@ const Index = () => {
                 <div className="lg:col-span-2 space-y-4">
                   <PreviewPanel
                     ref={previewPanelRef}
-                    items={getTimelineItems()}
-                    selectedTheme={selectedTheme}
+                    items={getOrderedItems()}
+                    selectedTransitions={selectedTransitions}
+                    transitionDuration={transitionDuration}
                   />
                 </div>
 
                 <div className="lg:col-span-1">
                   <ExportPanel
-                    items={getTimelineItems()}
-                    selectedTransitions={DEFAULT_TRANSITIONS}
-                    transitionDuration={DEFAULT_TRANSITION_DURATION}
+                    items={getOrderedItems()}
+                    selectedTransitions={selectedTransitions}
+                    transitionDuration={transitionDuration}
                     titleCardDuration={titleCardDuration}
                   />
                 </div>
