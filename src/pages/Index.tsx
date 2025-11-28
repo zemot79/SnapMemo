@@ -159,7 +159,10 @@ const Index = () => {
         img.onload = () => {
           const imageWidth = canvas.width * (2 / 3);
 
-          const scale = Math.max(imageWidth / img.width, canvas.height / img.height);
+          const scale = Math.max(
+            imageWidth / img.width,
+            canvas.height / img.height
+          );
           const scaledWidth = img.width * scale;
           const scaledHeight = img.height * scale;
           const x = (imageWidth - scaledWidth) / 2;
@@ -329,30 +332,30 @@ const Index = () => {
     setMediaItems((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
-// REORDER
-const handleReorder = useCallback((from, to) => {
-  setMediaItems((prev) => {
-    const arr = [...prev];
-    const [moved] = arr.splice(from, 1);
-    arr.splice(to, 0, moved);
+  // REORDER – TitleCard fixen elöl, LogoCard fixen hátul
+  const handleReorder = useCallback((from: number, to: number) => {
+    setMediaItems((prev) => {
+      const arr = [...prev];
+      const [moved] = arr.splice(from, 1);
+      arr.splice(to, 0, moved);
 
-    // Title card fixen az elején
-    const titleIdx = arr.findIndex((i) => i.type === "titleCard");
-    if (titleIdx > 0) {
-      const [t] = arr.splice(titleIdx, 1);
-      arr.unshift(t);
-    }
+      // Title card az elején
+      const titleIdx = arr.findIndex((i) => i.type === "titleCard");
+      if (titleIdx > 0) {
+        const [t] = arr.splice(titleIdx, 1);
+        arr.unshift(t);
+      }
 
-    // Logo fixen a végén
-    const logoIdx = arr.findIndex((i) => i.type === "logoCard");
-    if (logoIdx !== -1 && logoIdx !== arr.length - 1) {
-      const [l] = arr.splice(logoIdx, 1);
-      arr.push(l);
-    }
+      // Logo a végén
+      const logoIdx = arr.findIndex((i) => i.type === "logoCard");
+      if (logoIdx !== -1 && logoIdx !== arr.length - 1) {
+        const [l] = arr.splice(logoIdx, 1);
+        arr.push(l);
+      }
 
-    return arr;
-  });
-}, []);
+      return arr;
+    });
+  }, []);
 
   // DURATION CHANGE
   const handleDurationChange = useCallback((id: string, duration: number) => {
@@ -395,14 +398,29 @@ const handleReorder = useCallback((from, to) => {
   }, []);
 
   // SEGÉD: rendezett timeline (Title → köztesek → Logo)
-const getOrderedItems = () => [
-  ...mediaItems.filter((i) => i.type === "titleCard"),
-  ...mediaItems.filter(
-    (i) => i.type !== "titleCard" && i.type !== "logoCard"
-  ),
-  ...mediaItems.filter((i) => i.type === "logoCard"),
-];
-  
+  const getOrderedItems = () => [
+    ...mediaItems.filter((i) => i.type === "titleCard"),
+    ...mediaItems.filter(
+      (i) => i.type !== "titleCard" && i.type !== "logoCard"
+    ),
+    ...mediaItems.filter((i) => i.type === "logoCard"),
+  ];
+
+  // Ugyanaz a logika, mint az EditStep-ben: ha van titleCard,
+  // az első képet kivesszük a timeline-ból, hogy ne legyen dupla
+  const getTimelineItems = () => {
+    const base = getOrderedItems();
+    if (!base.length) return base;
+
+    const hasTitleCard = base.some((i) => i.type === "titleCard");
+    if (!hasTitleCard) return base;
+
+    const firstImageIndex = base.findIndex((i) => i.type === "image");
+    if (firstImageIndex === -1) return base;
+
+    return base.filter((_, idx) => idx !== firstImageIndex);
+  };
+
   const getImageCount = () =>
     mediaItems.filter((i) => i.type === "image").length;
   const getVideoCount = () =>
@@ -416,7 +434,7 @@ const getOrderedItems = () => [
 
   const canGoPrev = () => currentStep > 1;
 
-  // Step 6-hoz: rendezett sorrend
+  // Step 6-hoz: rendezett sorrend – ha kell máshol
   const orderedItems = sortMediaItems(mediaItems);
   const videoItems = orderedItems.filter((i) => i.type === "video");
 
@@ -505,7 +523,6 @@ const getOrderedItems = () => [
                     <p className="text-sm text-muted-foreground mb-4">
                       This is how your title card will appear
                     </p>
-
                     <div className="aspect-video bg-black rounded-lg overflow-hidden">
                       <TitleCardPreview
                         key={titleCardChangeKey}
@@ -599,24 +616,40 @@ const getOrderedItems = () => [
             </div>
           )}
 
-{/* STEP 4 – EDIT & TIMELINE */}
-{currentStep === 4 && (
-  <EditStep
-    items={getOrderedItems()}
-    selectedTheme={selectedTheme}
-    onThemeChange={setSelectedTheme}
-    onRemove={handleRemove}
-    onReorder={handleReorder}
-    onDurationChange={handleDurationChange}
-    onKenBurnsChange={(id, kenBurns) => {
-      setMediaItems((prev) =>
-        prev.map((i) => (i.id === id ? { ...i, kenBurns } : i))
-      );
-    }}
-    onTextOverlayClick={(id) => setTextOverlayItemId(id)}
-    location={videoLocation}
-  />
-)}
+          {/* STEP 4 – EDIT & TIMELINE */}
+          {currentStep === 4 && (
+            <EditStep
+              items={getOrderedItems()}
+              selectedTheme={selectedTheme}
+              onThemeChange={setSelectedTheme}
+              onRemove={handleRemove}
+              onReorder={(from, to) => {
+                // Timeline indexek → valós mediaItems indexek
+                const timelineItems = getTimelineItems();
+                const fromItem = timelineItems[from];
+                const toItem = timelineItems[to];
+                if (!fromItem || !toItem) return;
+
+                const fromIndex = mediaItems.findIndex(
+                  (i) => i.id === fromItem.id
+                );
+                const toIndex = mediaItems.findIndex(
+                  (i) => i.id === toItem.id
+                );
+                if (fromIndex === -1 || toIndex === -1) return;
+
+                handleReorder(fromIndex, toIndex);
+              }}
+              onDurationChange={handleDurationChange}
+              onKenBurnsChange={(id, kenBurns) => {
+                setMediaItems((prev) =>
+                  prev.map((i) => (i.id === id ? { ...i, kenBurns } : i))
+                );
+              }}
+              onTextOverlayClick={(id) => setTextOverlayItemId(id)}
+              location={videoLocation}
+            />
+          )}
 
           {/* STEP 5 – MUSIC */}
           {currentStep === 5 && (
@@ -634,34 +667,34 @@ const getOrderedItems = () => [
               />
             </div>
           )}
-          
-{/* STEP 6 – PREVIEW & EXPORT */}
-{currentStep === 6 && (
-  <div className="max-w-6xl mx-auto space-y-6">
-    <div className="text-center mb-6">
-      <h2 className="text-2xl font-bold">Preview and Export</h2>
-    </div>
 
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 space-y-4">
-        <PreviewPanel
-          ref={previewPanelRef}
-          items={getOrderedItems()}
-          selectedTransitions={["fade"]}
-          transitionDuration={0.4}
-        />
-      </div>
+          {/* STEP 6 – PREVIEW & EXPORT */}
+          {currentStep === 6 && (
+            <div className="max-w-6xl mx-auto space-y-6">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold">Preview and Export</h2>
+              </div>
 
-      <div className="lg:col-span-1">
-        <ExportPanel
-          items={getOrderedItems().filter((i) => i.type === "video")}
-          selectedTransitions={["fade"]}
-          transitionDuration={0.4}
-        />
-      </div>
-    </div>
-  </div>
-)}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-4">
+                  <PreviewPanel
+                    ref={previewPanelRef}
+                    items={getTimelineItems()}
+                    selectedTheme={selectedTheme}
+                  />
+                </div>
+
+                <div className="lg:col-span-1">
+                  <ExportPanel
+                    items={getTimelineItems()}
+                    selectedTransitions={DEFAULT_TRANSITIONS}
+                    transitionDuration={DEFAULT_TRANSITION_DURATION}
+                    titleCardDuration={titleCardDuration}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* NAVIGATION */}
           {currentStep > 1 && (
