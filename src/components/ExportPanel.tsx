@@ -262,6 +262,26 @@ export const ExportPanel = ({
         Render and download your final video, including title & logo cards.
       </p>
 
+      {/* ÚJ: aktív transition lista az export panelben is */}
+      {selectedTransitions && selectedTransitions.length > 0 && (
+        <div className="text-xs text-muted-foreground space-y-1">
+          <div>Transitions in export:</div>
+          <div className="flex flex-wrap gap-1">
+            {selectedTransitions.map((t) => (
+              <span
+                key={t}
+                className="px-2 py-[2px] rounded-full border bg-background text-[11px]"
+              >
+                {t}
+              </span>
+            ))}
+            <span className="ml-1 text-[11px]">
+              Duration: {transitionDuration.toFixed(1)}s
+            </span>
+          </div>
+        </div>
+      )}
+
       <Button
         disabled={loading || items.length === 0}
         onClick={handleExport}
