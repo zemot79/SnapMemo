@@ -29,6 +29,8 @@ interface PreviewPanelProps {
   selectedTheme?: string;
   titleCardSettings?: any;
   onTitleCardChange?: () => void;
+  selectedTransitions?: string[];
+transitionDuration?: number;
 }
 
 type NormalizedClip = {
