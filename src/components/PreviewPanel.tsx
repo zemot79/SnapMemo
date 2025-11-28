@@ -30,9 +30,7 @@ type NormalizedClip = {
 
 const FALLBACK_DURATION = 3;
 
-// ----------------------------------------------------
-// Transition class selector (which animation to apply)
-// ----------------------------------------------------
+// Melyik transition névhez melyik animáció osztály tartozzon
 function getTransitionClass(name?: string | null) {
   switch (name) {
     case "fade":
@@ -41,8 +39,10 @@ function getTransitionClass(name?: string | null) {
     case "slide":
       return "animate-slideTransition";
     case "zoom":
+    case "zoomPunch":
       return "animate-zoomTransition";
     case "blur":
+    case "blurFade":
       return "animate-blurTransition";
     case "filmBurn":
       return "animate-filmBurnTransition";
@@ -53,9 +53,6 @@ function getTransitionClass(name?: string | null) {
   }
 }
 
-// ----------------------------------------------------
-// MAIN COMPONENT
-// ----------------------------------------------------
 const PreviewPanelInner = (
   {
     items,
@@ -68,16 +65,15 @@ const PreviewPanelInner = (
 
   const [globalTime, setGlobalTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [lastIndex, setLastIndex] = useState(0);
 
-  // ---------------- NORMALIZED CLIP LIST ----------------
+  // --- CLIP NORMALIZÁLÁS ---
   const clips: NormalizedClip[] = useMemo(() => {
     if (!items || !items.length) return [];
 
     return items.map((item, idx) => {
-      let dur =
+      let dur: number =
         typeof item.duration === "number"
           ? item.duration
           : typeof item.duration === "string"
@@ -91,22 +87,22 @@ const PreviewPanelInner = (
       }
 
       const isVideo = item.type === "video";
-      let src = "";
 
+      let src = "";
       if (isVideo) {
-        src = item.url || URL.createObjectURL(item.file);
+        if (item.url) src = item.url;
+        else if (item.file instanceof File) src = URL.createObjectURL(item.file);
       } else {
-        src =
-          item.thumbnail ||
-          item.url ||
-          (item.file ? URL.createObjectURL(item.file) : "");
+        if (item.thumbnail) src = item.thumbnail;
+        else if (item.url) src = item.url;
+        else if (item.file instanceof File) src = URL.createObjectURL(item.file);
       }
 
       return {
         id: item.id || `clip-${idx}`,
-        duration: dur,
         src,
         isVideo,
+        duration: dur,
       };
     });
   }, [items]);
@@ -117,12 +113,12 @@ const PreviewPanelInner = (
   );
   const safeTotal = totalDuration || 1;
 
-  // ---------------- CURRENT CLIP LOGIC ----------------
+  // --- AKTUÁLIS CLIP KIVÁLASZTÁSA ---
   const { currentIndex, currentClip, clipStartTime, timeInClip } = useMemo(() => {
     if (!clips.length) {
       return {
         currentIndex: 0,
-        currentClip: null,
+        currentClip: null as NormalizedClip | null,
         clipStartTime: 0,
         timeInClip: 0,
       };
@@ -130,9 +126,9 @@ const PreviewPanelInner = (
 
     let acc = 0;
     for (let i = 0; i < clips.length; i++) {
-      const dur = clips[i].duration;
-      if (globalTime <= acc + dur || i === clips.length - 1) {
-        const t = Math.max(0, Math.min(globalTime - acc, dur));
+      const d = clips[i].duration;
+      if (globalTime <= acc + d || i === clips.length - 1) {
+        const t = Math.max(0, Math.min(globalTime - acc, d));
         return {
           currentIndex: i,
           currentClip: clips[i],
@@ -140,10 +136,9 @@ const PreviewPanelInner = (
           timeInClip: t,
         };
       }
-      acc += dur;
+      acc += d;
     }
 
-    // fallback
     const last = clips.length - 1;
     const lastClip = clips[last];
     const start = clips.slice(0, last).reduce((s, c) => s + c.duration, 0);
@@ -155,7 +150,7 @@ const PreviewPanelInner = (
     };
   }, [clips, globalTime]);
 
-  // ---------------- PLAYBACK LOOP ----------------
+  // --- LEJÁTSZÁS LOOP ---
   useEffect(() => {
     if (!isPlaying || !clips.length || totalDuration === 0) return;
 
@@ -171,8 +166,8 @@ const PreviewPanelInner = (
           setIsPlaying(false);
           return totalDuration;
         }
-        const nx = prev + dt;
-        return nx >= totalDuration ? totalDuration : nx;
+        const next = prev + dt;
+        return next >= totalDuration ? totalDuration : next;
       });
 
       id = requestAnimationFrame(loop);
@@ -182,7 +177,7 @@ const PreviewPanelInner = (
     return () => cancelAnimationFrame(id);
   }, [isPlaying, clips.length, totalDuration]);
 
-  // ---------------- VIDEO SYNC ----------------
+  // --- VIDEO SZINKRONIZÁLÁS ---
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid || !currentClip) return;
@@ -210,7 +205,9 @@ const PreviewPanelInner = (
 
         if (isPlaying && vid.paused) vid.play().catch(() => {});
         if (!isPlaying && !vid.paused) vid.pause();
-      } catch {}
+      } catch {
+        // ignore
+      }
     };
 
     if (src !== old) {
@@ -223,7 +220,7 @@ const PreviewPanelInner = (
     }
   }, [currentClip, timeInClip, isPlaying]);
 
-  // ---------------- REF EXPOSURE ----------------
+  // --- REF API ---
   useImperativeHandle(ref, () => ({
     play: () => {
       if (totalDuration > 0) setIsPlaying(true);
@@ -237,36 +234,40 @@ const PreviewPanelInner = (
     },
   }));
 
-  // ---------------- TRANSITION TRIGGER ----------------
+  // --- TRANSITION TRIGGER ---
   useEffect(() => {
     if (!clips.length) return;
     if (currentIndex === lastIndex) return;
 
     setLastIndex(currentIndex);
 
-    if (selectedTransitions.length === 0) return;
+    if (!selectedTransitions.length) return;
 
     setIsTransitioning(true);
-
     const timeout = setTimeout(
       () => setIsTransitioning(false),
       transitionDuration * 1000
     );
     return () => clearTimeout(timeout);
-  }, [currentIndex, lastIndex, clips.length, selectedTransitions, transitionDuration]);
+  }, [
+    clips.length,
+    currentIndex,
+    lastIndex,
+    selectedTransitions,
+    transitionDuration,
+  ]);
 
   const currentTransition =
     currentIndex > 0 && selectedTransitions.length > 0
       ? selectedTransitions[(currentIndex - 1) % selectedTransitions.length]
       : null;
 
-  // ---------------- SCRUBBERS ----------------
+  // --- SCRUBBEREK ---
   const scrubClip = (v: number) => {
-    if (currentClip) {
-      const clamped = Math.max(0, Math.min(v, currentClip.duration));
-      setIsPlaying(false);
-      setGlobalTime(clipStartTime + clamped);
-    }
+    if (!currentClip) return;
+    const clamped = Math.max(0, Math.min(v, currentClip.duration));
+    setIsPlaying(false);
+    setGlobalTime(clipStartTime + clamped);
   };
 
   const scrubTimeline = (v: number) => {
@@ -284,11 +285,11 @@ const PreviewPanelInner = (
     }
   };
 
-  // ---------------- RENDER MEDIA ----------------
+  // --- MEDIA RENDER ---
   const renderMedia = () => {
     if (!currentClip) {
       return (
-        <div className="flex items-center justify-center w-full h-full text-muted-foreground">
+        <div className="flex items-center justify-center w-full h-full text-muted-foreground text-sm">
           Add media to preview.
         </div>
       );
@@ -316,18 +317,16 @@ const PreviewPanelInner = (
 
   return (
     <Card className="p-4 lg:p-5 space-y-4">
-      {/* HEADER */}
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold">Timeline Preview</h3>
         <button
           onClick={togglePlay}
-          className="px-3 py-1 text-xs rounded-full border hover:bg-accent border-border"
+          className="px-3 py-1 text-xs rounded-full border border-border hover:bg-accent"
         >
           {isPlaying ? "Pause" : "Play"}
         </button>
       </div>
 
-      {/* TRANSITION LIST */}
       {selectedTransitions.length > 0 && (
         <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
           {selectedTransitions.map((t) => (
@@ -342,28 +341,29 @@ const PreviewPanelInner = (
         </div>
       )}
 
-      {/* MEDIA AREA */}
+      {/* Itt most MINDIG a teljes media-blokk animálódik, nem egy üres overlay */}
       <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
-        {renderMedia()}
-
-        {/* REAL TRANSITION EFFECT */}
-        {isTransitioning && currentTransition && (
-          <div
-            className={`absolute inset-0 pointer-events-none ${getTransitionClass(
-              currentTransition
-            )}`}
-            style={{
-              animationDuration: `${transitionDuration}s`,
-            }}
-          />
-        )}
+        <div
+          className={
+            "w-full h-full " +
+            (isTransitioning && currentTransition
+              ? getTransitionClass(currentTransition)
+              : "")
+          }
+          style={
+            isTransitioning && currentTransition
+              ? { animationDuration: `${transitionDuration}s` }
+              : undefined
+          }
+        >
+          {renderMedia()}
+        </div>
       </div>
 
-      {/* CLIP SCRUBBER */}
       {currentClip && (
         <div>
           <div className="flex justify-between text-[11px] text-muted-foreground">
-            <span>Current Clip</span>
+            <span>Current clip</span>
             <span>
               {timeInClip.toFixed(1)} / {currentClip.duration.toFixed(1)}s
             </span>
@@ -380,11 +380,10 @@ const PreviewPanelInner = (
         </div>
       )}
 
-      {/* TIMELINE SCRUBBER */}
       {clips.length > 0 && (
         <div>
           <div className="flex justify-between text-[11px] text-muted-foreground">
-            <span>Full Video</span>
+            <span>Full video</span>
             <span>
               {Math.floor(globalTime)} / {Math.floor(totalDuration)}s
             </span>
@@ -399,7 +398,6 @@ const PreviewPanelInner = (
             className="w-full"
           />
 
-          {/* TIMELINE MARKERS */}
           {clips.length > 1 && (
             <div className="relative h-4 mt-1">
               {(() => {
