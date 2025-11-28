@@ -65,28 +65,21 @@ export const EditStep = ({
     useState<TransitionId[]>(["fade"]);
   const [transitionDuration, setTransitionDuration] = useState<number>(0.4);
 
-  // 1) Rendezett lista: Title card elöl, Logo hátul
-  const orderedItems = useMemo(() => {
-    const titles = items.filter((i) => i.type === "titleCard");
-    const logos = items.filter((i) => i.type === "logoCard");
-    const middle = items.filter(
-      (i) => i.type !== "titleCard" && i.type !== "logoCard"
-    );
+// 1) Rendezett lista: csak a dupla első kép kiszedése, sorrendhez nem nyúlunk
+const orderedItems = useMemo(() => {
+  if (!items.length) return items;
 
-    let merged: MediaItem[] = [...titles, ...middle, ...logos];
+  // Ha nincs titleCard, semmit nem buherálunk
+  const hasTitleCard = items.some((i) => i.type === "titleCard");
+  if (!hasTitleCard) return items;
 
-    // 2) Dupla első kép kiszedése:
-    // ha van titleCard ÉS van image, az első image-et elrejtjük a timeline-ból,
-    // hogy ne jelenjen meg kétszer (title + külön kép).
-    if (titles.length > 0) {
-      const firstImageIndex = merged.findIndex((i) => i.type === "image");
-      if (firstImageIndex !== -1) {
-        merged = merged.filter((_, idx) => idx !== firstImageIndex);
-      }
-    }
+  // Ha van titleCard, az első IMAGE-t rejtjük el a timeline-ból,
+  // hogy ne legyen dupla (title + ugyanaz az első kép).
+  const firstImageIndex = items.findIndex((i) => i.type === "image");
+  if (firstImageIndex === -1) return items;
 
-    return merged;
-  }, [items]);
+  return items.filter((_, idx) => idx !== firstImageIndex);
+}, [items]);
 
   const toggleTransition = (id: TransitionId) => {
     setSelectedTransitions((prev) =>
