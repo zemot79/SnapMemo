@@ -108,3 +108,47 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+/* Fade */
+@keyframes fadeTransition {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.animate-fadeTransition {
+  animation: fadeTransition var(--tw-duration) linear forwards;
+}
+
+/* Slide */
+@keyframes slideTransition {
+  0% { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+.animate-slideTransition {
+  animation: slideTransition var(--tw-duration) ease-out forwards;
+}
+
+/* Zoom */
+@keyframes zoomTransition {
+  0% { transform: scale(1.25); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-zoomTransition {
+  animation: zoomTransition var(--tw-duration) ease-out forwards;
+}
+
+/* Blur */
+@keyframes blurTransition {
+  0% { filter: blur(25px); opacity: 0; }
+  100% { filter: blur(0); opacity: 1; }
+}
+.animate-blurTransition {
+  animation: blurTransition var(--tw-duration) linear forwards;
+}
+
+/* FilmBurn */
+@keyframes filmBurnTransition {
+  0% { background: radial-gradient(circle, rgba(255,200,80,0.7) 0%, transparent 70%); opacity:0; }
+  100% { background: transparent; opacity:1; }
+}
+.animate-filmBurnTransition {
+  animation: filmBurnTransition var(--tw-duration) ease-out forwards;
+}
