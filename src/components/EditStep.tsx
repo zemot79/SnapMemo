@@ -61,9 +61,11 @@ export const EditStep = ({
   onKenBurnsChange,
   onTextOverlayClick,
 }: EditStepProps) => {
-  const [selectedTransitions, setSelectedTransitions] =
-    useState<TransitionId[]>(["fade"]);
-  const [transitionDuration, setTransitionDuration] = useState<number>(0.4);
+  selectedTransitions: TransitionId[];
+onSelectedTransitionsChange: (ids: TransitionId[]) => void;
+transitionDuration: number;
+onTransitionDurationChange: (n: number) => void;
+
 
 // 1) Rendezett lista: csak a dupla első kép kiszedése, sorrendhez nem nyúlunk
 const orderedItems = useMemo(() => {
@@ -81,11 +83,14 @@ const orderedItems = useMemo(() => {
   return items.filter((_, idx) => idx !== firstImageIndex);
 }, [items]);
 
-  const toggleTransition = (id: TransitionId) => {
-    setSelectedTransitions((prev) =>
-      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
-    );
-  };
+const toggleTransition = (id: TransitionId) => {
+  const newList = selectedTransitions.includes(id)
+    ? selectedTransitions.filter((t) => t !== id)
+    : [...selectedTransitions, id];
+
+  onSelectedTransitionsChange(newList);
+};
+
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -203,7 +208,7 @@ const orderedItems = useMemo(() => {
                       min={0.2}
                       max={1}
                       step={0.1}
-                      onValueChange={(v) => setTransitionDuration(v[0] ?? 0.4)}
+                     onValueChange={(v) => onTransitionDurationChange(v[0] ?? 0.4)}
                       className="flex-1"
                     />
                     <span className="text-xs text-muted-foreground w-10 text-right">
