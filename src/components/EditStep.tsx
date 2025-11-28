@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Play, Sparkles, Type, Music } from "lucide-react";
+import { Play, Sparkles } from "lucide-react";
 import { PreviewPanel } from "@/components/PreviewPanel";
 
 type KenBurnsSettings = {
@@ -14,7 +14,7 @@ type KenBurnsSettings = {
   effect: "zoomIn" | "zoomOut" | "panLeft" | "panRight";
 };
 
-type TransitionId =
+export type TransitionId =
   | "fade"
   | "crossDissolve"
   | "dipBlack"
@@ -29,14 +29,14 @@ const AVAILABLE_TRANSITIONS: {
   label: string;
   description: string;
 }[] = [
-  { id: "fade", label: "Fade", description: "Classic smooth dissolve" },
-  { id: "crossDissolve", label: "Cross dissolve", description: "Standard XF" },
-  { id: "dipBlack", label: "Dip to black", description: "Fade to black" },
-  { id: "slide", label: "Slide", description: "Modern slide" },
-  { id: "zoom", label: "Zoom punch", description: "Quick zoom punch" },
-  { id: "glitch", label: "Glitch", description: "Digital glitch" },
-  { id: "blur", label: "Blur fade", description: "Blur + fade" },
-  { id: "filmBurn", label: "Film burn", description: "Retro leak burn" },
+  { id: "fade", label: "Fade", description: "Classic transition" },
+  { id: "crossDissolve", label: "Cross Dissolve", description: "Soft blend" },
+  { id: "dipBlack", label: "Dip to Black", description: "Fade to black" },
+  { id: "slide", label: "Slide", description: "Side move" },
+  { id: "zoom", label: "Zoom Punch", description: "Quick zoom" },
+  { id: "glitch", label: "Glitch", description: "Digital noise" },
+  { id: "blur", label: "Blur Fade", description: "Blur + fade" },
+  { id: "filmBurn", label: "Film Burn", description: "Retro film burn" },
 ];
 
 interface EditStepProps {
@@ -49,11 +49,11 @@ interface EditStepProps {
   onKenBurnsChange?: (id: string, kenBurns: KenBurnsSettings) => void;
   onTextOverlayClick?: (id: string) => void;
 
-  // **THIS IS THE CORRECT PLACE**
-  selectedTransitions: TransitionId[];
-  onSelectedTransitionsChange: (ids: TransitionId[]) => void;
-  transitionDuration: number;
-  onTransitionDurationChange: (value: number) => void;
+  /** OPTIONAL – safe defaults to avoid crashes */
+  selectedTransitions?: TransitionId[];
+  onSelectedTransitionsChange?: (ids: TransitionId[]) => void;
+  transitionDuration?: number;
+  onTransitionDurationChange?: (value: number) => void;
 
   location?: string;
 }
@@ -68,13 +68,12 @@ export const EditStep = ({
   onKenBurnsChange,
   onTextOverlayClick,
 
-  // **transition props**
-  selectedTransitions,
-  onSelectedTransitionsChange,
-  transitionDuration,
-  onTransitionDurationChange,
+  selectedTransitions = ["fade"],
+  onSelectedTransitionsChange = () => {},
+  transitionDuration = 0.4,
+  onTransitionDurationChange = () => {},
 }: EditStepProps) => {
-  // --- FILTER DUPLICATE FIRST IMAGE WHEN TITLECARD EXISTS ---
+  // Remove the duplicated first image if TitleCard exists
   const orderedItems = useMemo(() => {
     if (!items.length) return items;
 
@@ -87,56 +86,55 @@ export const EditStep = ({
     return items.filter((_, idx) => idx !== firstImageIndex);
   }, [items]);
 
-  // --- TOGGLE TRANSITION ---
   const toggleTransition = (id: TransitionId) => {
-    const newList = selectedTransitions.includes(id)
+    const updated = selectedTransitions.includes(id)
       ? selectedTransitions.filter((t) => t !== id)
       : [...selectedTransitions, id];
 
-    onSelectedTransitionsChange(newList);
+    onSelectedTransitionsChange(updated);
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <div className="text-center mb-2">
+    <div className="max-w-7xl mx-auto space-y-8">
+      <div className="text-center">
         <h2 className="text-2xl font-bold">Edit</h2>
-        <p className="text-muted-foreground">Adjust timeline & transitions</p>
+        <p className="text-muted-foreground">Timeline & Transitions</p>
       </div>
 
-      <Tabs defaultValue="media" className="w-full">
-        <TabsList className="mx-auto mb-4 w-fit">
+      <Tabs defaultValue="media">
+        <TabsList className="mx-auto mb-6">
           <TabsTrigger value="media">Media</TabsTrigger>
           <TabsTrigger value="text">Text</TabsTrigger>
           <TabsTrigger value="audio">Audio</TabsTrigger>
         </TabsList>
 
         {/* MEDIA TAB */}
-        <TabsContent value="media" className="mt-0">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            {/* TIMELINE */}
-            <div className="space-y-6">
-              <Card>
-                <div className="p-4 pb-0">
-                  <h3 className="text-base font-semibold">Timeline</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Drag media to change order
-                  </p>
-                </div>
-                <div className="p-4 pt-0">
-                  <Timeline
-                    items={orderedItems}
-                    onRemove={onRemove}
-                    onReorder={onReorder}
-                    onDurationChange={onDurationChange}
-                    onKenBurnsChange={onKenBurnsChange}
-                    onTextOverlayClick={onTextOverlayClick}
-                  />
-                </div>
-              </Card>
-            </div>
+        <TabsContent value="media">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* LEFT – TIMELINE */}
+            <Card>
+              <div className="p-4 pb-0">
+                <h3 className="text-base font-semibold">Timeline</h3>
+                <p className="text-xs text-muted-foreground">
+                  Drag media to change order
+                </p>
+              </div>
+
+              <div className="p-4 pt-0">
+                <Timeline
+                  items={orderedItems}
+                  onRemove={onRemove}
+                  onReorder={onReorder}
+                  onDurationChange={onDurationChange}
+                  onKenBurnsChange={onKenBurnsChange}
+                  onTextOverlayClick={onTextOverlayClick}
+                />
+              </div>
+            </Card>
 
             {/* RIGHT SIDE */}
             <div className="space-y-6">
+              {/* Clip Preview */}
               <Card>
                 <div className="p-5 pb-0">
                   <h3 className="text-base font-semibold flex items-center gap-2">
@@ -144,6 +142,7 @@ export const EditStep = ({
                     Clip Preview
                   </h3>
                 </div>
+
                 <div className="p-4">
                   <PreviewPanel
                     items={orderedItems}
@@ -159,6 +158,7 @@ export const EditStep = ({
                 onThemeChange={onThemeChange}
               />
 
+              {/* TRANSITIONS */}
               <Card>
                 <div className="p-4 pb-2">
                   <h3 className="text-base font-semibold flex items-center gap-2">
@@ -167,12 +167,12 @@ export const EditStep = ({
                   </h3>
                 </div>
 
-                <div className="px-4 pb-4 space-y-4">
+                <div className="px-4 pb-6 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {AVAILABLE_TRANSITIONS.map((t) => (
                       <label
                         key={t.id}
-                        className="flex items-start gap-2 rounded-md border px-2 py-2 text-xs cursor-pointer"
+                        className="flex items-start gap-2 border rounded-md px-3 py-2 text-xs cursor-pointer"
                       >
                         <Checkbox
                           checked={selectedTransitions.includes(t.id)}
@@ -188,6 +188,7 @@ export const EditStep = ({
                     ))}
                   </div>
 
+                  {/* Duration slider */}
                   <Label className="text-xs">Transition duration</Label>
                   <div className="flex items-center gap-3">
                     <Slider
@@ -198,7 +199,6 @@ export const EditStep = ({
                       onValueChange={(v) =>
                         onTransitionDurationChange(v[0] ?? 0.4)
                       }
-                      className="flex-1"
                     />
                     <span className="text-xs text-muted-foreground w-10 text-right">
                       {transitionDuration.toFixed(1)}s
@@ -212,7 +212,7 @@ export const EditStep = ({
 
         {/* TEXT TAB */}
         <TabsContent value="text">
-          <Card className="p-6">Text overlays editor is inside the timeline.</Card>
+          <Card className="p-6">Text overlays are edited in the timeline.</Card>
         </TabsContent>
 
         {/* AUDIO TAB */}
