@@ -466,15 +466,13 @@ const Index = () => {
 
                   {getImageCount() > 0 && (
                     <div className="bg-card rounded-lg border border-border p-6">
-                      <ImageEditor
-                        items={mediaItems.filter(
-                          (i) => i.type === "image"
-                        ) as any}
-                        onRemove={handleRemove}
-                        onDurationChange={handleDurationChange}
-                        onFocalPointChange={handleFocalPointChange}
-                        onReorder={handleReorder}
-                      />
+       <ImageEditor
+  images={mediaItems.filter((i) => i.type === "image") as any}
+  onRemove={handleRemove}
+  onDurationChange={handleDurationChange}
+  onFocalPointChange={handleFocalPointChange}
+  onReorder={handleReorder}
+/>
                     </div>
                   )}
                 </div>
