@@ -154,11 +154,31 @@ All colors MUST be HSL.
 
 /* FilmBurn */
 @keyframes filmBurnTransition {
-  0% { background: radial-gradient(circle, rgba(255,200,80,0.7) 0%, transparent 70%); opacity:0; }
-  100% { background: transparent; opacity:1; }
+  0% {
+    background: radial-gradient(circle, rgba(255, 200, 80, 0.7) 0%, transparent 70%);
+    opacity: 1;
+  }
+  100% {
+    background: transparent;
+    opacity: 0;
+  }
 }
 .animate-filmBurnTransition {
   animation-name: filmBurnTransition;
   animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+
+/* Glitch – egyszerű villogás */
+@keyframes glitchTransition {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-3px, 2px); }
+  40% { transform: translate(3px, -2px); }
+  60% { transform: translate(-2px, -3px); }
+  80% { transform: translate(2px, 3px); }
+}
+.animate-glitchTransition {
+  animation-name: glitchTransition;
+  animation-timing-function: linear;
   animation-fill-mode: forwards;
 }
