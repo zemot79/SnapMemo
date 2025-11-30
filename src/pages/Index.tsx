@@ -315,7 +315,7 @@ const newItems: MediaItem[] = files.map((file) => ({
   type: "image",
   duration: 3,
   thumbnail: URL.createObjectURL(file),
-  createdAt: Date.now(),
+  createdAt: file.lastModified,
 })) as any;
 
       const hasNoImages =
@@ -356,7 +356,7 @@ return {
   thumbnail: meta.url,
   url: meta.url,
   clips: [],
-  createdAt: Date.now(),
+  createdAt: file.lastModified,
 } as any;
     });
 
