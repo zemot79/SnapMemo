@@ -58,6 +58,8 @@ export interface MediaItem {
   file?: File;
   url?: string;
   thumbnail?: string;
+  /** FFmpeg által generált H.264 preview URL */
+  previewUrl?: string;
   duration?: number;
   clips?: { id: string; startTime: number; endTime: number }[];
   kenBurns?: KenBurnsSettings;
@@ -136,9 +138,9 @@ export const Timeline: React.FC<TimelineProps> = ({
   onTextOverlayClick,
 }) => {
   const renderPreview = (item: MediaItem) => {
-    // video
+    // video – preferáljuk az FFmpeg preview-t
     if (item.type === "video") {
-      const src = item.url || item.thumbnail;
+      const src = item.previewUrl || item.url || item.thumbnail;
       if (src) {
         return (
           <video
