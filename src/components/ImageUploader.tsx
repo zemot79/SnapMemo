@@ -14,8 +14,10 @@ export const ImageUploader = ({ onFilesAdded }: ImageUploaderProps) => {
         file.type.startsWith("image/")
       );
       if (files.length > 0) {
-        onFilesAdded(files);
-        toast.success(`${files.length} images added`);
+ onFilesAdded(
+  files.map(f => Object.assign(f, { createdAt: f.lastModified }))
+);
+toast.success(`${files.length} images added`);
       } else {
         toast.error("Only image files can be added");
       }
@@ -31,8 +33,10 @@ export const ImageUploader = ({ onFilesAdded }: ImageUploaderProps) => {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files || []);
       if (files.length > 0) {
-        onFilesAdded(files);
-        toast.success(`${files.length} images added`);
+        onFilesAdded(
+  files.map(f => Object.assign(f, { createdAt: f.lastModified }))
+);
+toast.success(`${files.length} images added`);
       }
     },
     [onFilesAdded]
