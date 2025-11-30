@@ -74,8 +74,24 @@ export const EditStep = ({
   onTransitionDurationChange = () => {},
 }: EditStepProps) => {
   // Remove the duplicated first image if TitleCard exists
-const orderedItems = items;
+const orderedItems = useMemo(() => {
+  const first = items.find((i) => i.type === "titleCard");
+  const last = items.find((i) => i.type === "logoCard");
 
+  const middle = items
+    .filter((i) => i.type !== "titleCard" && i.type !== "logoCard")
+    .sort((a, b) => {
+      const ca = (a as any).createdAt ?? 0;
+      const cb = (b as any).createdAt ?? 0;
+      return ca - cb;
+    });
+
+  return [
+    ...(first ? [first] : []),
+    ...middle,
+    ...(last ? [last] : []),
+  ];
+}, [items]);
 
   const toggleTransition = (id: TransitionId) => {
     const updated = selectedTransitions.includes(id)
