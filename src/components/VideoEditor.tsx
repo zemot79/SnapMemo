@@ -59,7 +59,7 @@ export const VideoEditor = ({
           ...prev,
           [video.id]: video.duration,
         }));
-      } else if (!videoDurations[video.id] && !video.duration) {
+      } else if (!videoDurations[video.id] && !video.duration && video.file) {
         const videoElement = document.createElement("video");
         videoElement.preload = "metadata";
         videoElement.src = URL.createObjectURL(video.file);
@@ -145,13 +145,18 @@ export const VideoEditor = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
       {videos.map((video, index) => {
-        const duration =
-          videoDurations[video.id] || video.duration || 0;
+        const duration = videoDurations[video.id] || video.duration || 0;
         const clips = video.clips || [];
         const totalClipDuration = clips.reduce(
           (acc, clip) => acc + (clip.endTime - clip.startTime),
           0
         );
+
+        // Itt preferáljuk az FFmpeg preview videót:
+        const previewSrc =
+          (video as any).previewUrl ||
+          video.url ||
+          (video.file ? URL.createObjectURL(video.file) : "");
 
         return (
           <Card
@@ -175,14 +180,21 @@ export const VideoEditor = ({
               </div>
             )}
 
-            {/* VIDEÓ ELŐNÉZET – ez volt az a verzió, amikor még jól ment */}
+            {/* VIDEÓ ELŐNÉZET – FFmpeg preview-t használunk, ha van */}
             <div className="relative aspect-[16/12] bg-muted">
-              <video
-                src={URL.createObjectURL(video.file)}
-                className="w-full h-full object-cover"
-                controls
-                preload="metadata"
-              />
+              {previewSrc ? (
+                <video
+                  src={previewSrc}
+                  className="w-full h-full object-cover"
+                  controls
+                  preload="metadata"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                  No preview
+                </div>
+              )}
+
               <Button
                 variant="destructive"
                 size="icon"
@@ -196,7 +208,7 @@ export const VideoEditor = ({
             <div className="p-4 bg-card space-y-4">
               <div>
                 <p className="text-sm font-medium truncate mb-1">
-                  {video.file.name}
+                  {video.file?.name}
                 </p>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Scissors className="w-3 h-3" />
@@ -238,40 +250,40 @@ export const VideoEditor = ({
                           <div className="space-y-1">
                             <Label className="text-xs">Segment (sec)</Label>
                             <div className="flex flex-col gap-1">
-                      <input
-  type="range"
-  min={0}
-  max={duration}
-  value={clip.startTime}
-  onMouseDown={(e) => e.stopPropagation()}
-  onClick={(e) => e.stopPropagation()}
-  onChange={(e) =>
-    updateClip(
-      video.id,
-      clip.id,
-      "startTime",
-      Number(e.target.value)
-    )
-  }
-  className="w-full"
-/>
-                             <input
-  type="range"
-  min={0}
-  max={duration}
-  value={clip.endTime}
-  onMouseDown={(e) => e.stopPropagation()}
-  onClick={(e) => e.stopPropagation()}
-  onChange={(e) =>
-    updateClip(
-      video.id,
-      clip.id,
-      "endTime",
-      Number(e.target.value)
-    )
-  }
-  className="w-full -mt-1"
-/>
+                              <input
+                                type="range"
+                                min={0}
+                                max={duration}
+                                value={clip.startTime}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) =>
+                                  updateClip(
+                                    video.id,
+                                    clip.id,
+                                    "startTime",
+                                    Number(e.target.value)
+                                  )
+                                }
+                                className="w-full"
+                              />
+                              <input
+                                type="range"
+                                min={0}
+                                max={duration}
+                                value={clip.endTime}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) =>
+                                  updateClip(
+                                    video.id,
+                                    clip.id,
+                                    "endTime",
+                                    Number(e.target.value)
+                                  )
+                                }
+                                className="w-full -mt-1"
+                              />
                             </div>
                           </div>
 
@@ -332,11 +344,11 @@ export const VideoEditor = ({
 
                   {/* Add clip button */}
                   <Button
-  variant="outline"
-  size="sm"
-  onClick={() => addClip(video.id)}
-  className="w-full gap-2"
->
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addClip(video.id)}
+                    className="w-full gap-2"
+                  >
                     <Plus className="w-4 h-4" />
                     Add segment
                   </Button>
