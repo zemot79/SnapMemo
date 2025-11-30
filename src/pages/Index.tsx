@@ -309,13 +309,14 @@ const Index = () => {
   // IMAGE ADD
   const handleImagesAdded = useCallback(
     async (files: File[]) => {
-      const newItems: MediaItem[] = files.map((file) => ({
-        id: Math.random().toString(36).slice(2),
-        file,
-        type: "image",
-        duration: 3,
-        thumbnail: URL.createObjectURL(file),
-      })) as any;
+const newItems: MediaItem[] = files.map((file) => ({
+  id: Math.random().toString(36).slice(2),
+  file,
+  type: "image",
+  duration: 3,
+  thumbnail: URL.createObjectURL(file),
+  createdAt: Date.now(),
+})) as any;
 
       const hasNoImages =
         mediaItems.filter((i) => i.type === "image").length === 0;
@@ -344,18 +345,19 @@ const Index = () => {
       const duration =
         meta.duration && meta.duration > 0 ? meta.duration : undefined;
 
-      return {
-        id: Math.random().toString(36).slice(2),
-        file,
-        type: "video",
-        duration,
-        videoLength: duration,
-        width: meta.width || undefined,
-        height: meta.height || undefined,
-        thumbnail: meta.url,
-        url: meta.url,
-        clips: [],
-      } as any;
+return {
+  id: Math.random().toString(36).slice(2),
+  file,
+  type: "video",
+  duration,
+  videoLength: duration,
+  width: meta.width || undefined,
+  height: meta.height || undefined,
+  thumbnail: meta.url,
+  url: meta.url,
+  clips: [],
+  createdAt: Date.now(),
+} as any;
     });
 
     setMediaItems((prev) => [...prev, ...items]);
