@@ -14,7 +14,9 @@ export const VideoUploader = ({ onFilesAdded }: VideoUploaderProps) => {
         file.type.startsWith("video/")
       );
       if (files.length > 0) {
-        await onFilesAdded(files);
+        await onFilesAdded(
+  files.map(f => Object.assign(f, { createdAt: f.lastModified }))
+);
       } else {
         toast.error("Only video files can be added");
       }
@@ -30,7 +32,9 @@ export const VideoUploader = ({ onFilesAdded }: VideoUploaderProps) => {
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files || []);
       if (files.length > 0) {
-        await onFilesAdded(files);
+       await onFilesAdded(
+  files.map(f => Object.assign(f, { createdAt: f.lastModified }))
+);
       }
     },
     [onFilesAdded]
