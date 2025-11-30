@@ -109,9 +109,11 @@ const PreviewPanelInner = (
       const isVideo = item.type === "video";
 
       // Forrás (src) feloldása egyszer item-re
+      const previewUrl = (item as any).previewUrl as string | undefined;
       let src = "";
       if (isVideo) {
-        if (item.url) src = item.url;
+        if (previewUrl) src = previewUrl;
+        else if (item.url) src = item.url;
         else if (item.file instanceof File) {
           src = URL.createObjectURL(item.file);
         }
