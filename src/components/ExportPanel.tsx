@@ -8,6 +8,41 @@ import {
   TransitionId,
 } from "@/lib/transitions";
 
+type ResolutionPreset = "1080p" | "720p" | "480p";
+type Orientation = "landscape" | "vertical" | "square";
+
+function getDimensions(resolution: ResolutionPreset, orientation: Orientation) {
+  let height: number;
+  switch (resolution) {
+    case "720p":
+      height = 720;
+      break;
+    case "480p":
+      height = 480;
+      break;
+    case "1080p":
+    default:
+      height = 1080;
+      break;
+  }
+
+  let width: number;
+  switch (orientation) {
+    case "vertical":
+      width = Math.round((9 / 16) * height);
+      break;
+    case "square":
+      width = height;
+      break;
+    case "landscape":
+    default:
+      width = Math.round((16 / 9) * height);
+      break;
+  }
+
+  return { width, height };
+}
+
 // ======================================================================
 // FFmpeg betöltése CDN-ről – Vercel-biztos, nincs import("@ffmpeg/ffmpeg")
 // ======================================================================
@@ -25,7 +60,7 @@ async function loadFFmpeg(setExportProgress: (n: number) => void) {
 
     const FFmpeg = (window as any).FFmpeg;
     if (!FFmpeg) {
-      throw new Error("FFmpeg global not found on window");
+      throw new Error("FFmpeg global not found");
     }
 
     createFFmpeg = FFmpeg.createFFmpeg;
@@ -54,32 +89,37 @@ function loadScript(src: string) {
     s.src = src;
     s.onload = () => resolve();
     s.onerror = () => reject(new Error("FFmpeg script load error"));
-    document.body.appendChild(s);
+    document.head.appendChild(s);
   });
 }
 
-// csak azért exportáljuk, mert máshol importálva volt
-export interface ExportSettings {}
-
 // ======================================================================
-// EXPORT PANEL – Title card + videos + logo card export
+// ExportPanel típusok
 // ======================================================================
 
-type ExportItem = {
+export interface ExportItem {
   id: string;
-  type: string;
+  type: "title" | "image" | "video" | "logo";
   url?: string;
   thumbnail?: string;
   file?: File;
   duration?: number;
-};
+}
+
+export interface ExportSettings {
+  // helyet hagyunk későbbi extra beállításoknak
+}
 
 interface ExportPanelProps {
   items: ExportItem[];
   selectedTransitions: TransitionId[];
   transitionDuration: number;
-  titleCardDuration: number; // sliderből jön
+  titleCardDuration: number;
 }
+
+// ======================================================================
+// ExportPanel komponens
+// ======================================================================
 
 export const ExportPanel = ({
   items,
@@ -89,6 +129,9 @@ export const ExportPanel = ({
 }: ExportPanelProps) => {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [resolution, setResolution] = useState<ResolutionPreset>("1080p");
+  const [orientation, setOrientation] = useState<Orientation>("landscape");
+  const { width, height } = getDimensions(resolution, orientation);
 
   const handleExport = async () => {
     if (!items || items.length === 0) return;
@@ -99,8 +142,8 @@ export const ExportPanel = ({
     const { ffmpeg, fetchFile } = await loadFFmpeg(setProgress);
 
     // --- 1) Sorrend felépítése: Title -> Videók -> Logo ---
-    const titleItem = items.find((i) => i.type === "titleCard");
-    const logoItem = items.find((i) => i.type === "logoCard");
+    const titleItem = items.find((i) => i.type === "title");
+    const logoItem = items.find((i) => i.type === "logo");
     const videoItems = items.filter((i) => i.type === "video");
 
     type Scene = {
@@ -141,7 +184,7 @@ export const ExportPanel = ({
       return;
     }
 
-    // Pseudo items csak a transition maphez – duration a fontos
+    // Transition input lista: csak a videók + képek ID-i
     const pseudoForTransitions = scenes.map((s, index) => ({
       id: s.item.id || `scene-${index}`,
       duration: s.duration,
@@ -153,6 +196,8 @@ export const ExportPanel = ({
       selectedTransitions,
       transitionDuration
     );
+
+    const scaleFilter = `scale=${width}:${height}:force_original_aspect_ratio=cover,setsar=1:1`;
 
     // --- 2) Fájlok előkészítése: minden scene -> clip{i}.mp4 ---
     for (let index = 0; index < scenes.length; index++) {
@@ -172,7 +217,18 @@ export const ExportPanel = ({
         }
 
         const data = await fetchFile(blob);
-        ffmpeg.FS("writeFile", fileName, data);
+        const inputName = `src${index}.mp4`;
+        ffmpeg.FS("writeFile", inputName, data);
+
+        await ffmpeg.run(
+          "-i",
+          inputName,
+          "-vf",
+          scaleFilter,
+          "-preset",
+          "veryfast",
+          fileName
+        );
       } else {
         // title / logo -> kép -> MP4
         const imgItem = scene.item;
@@ -197,7 +253,9 @@ export const ExportPanel = ({
           "-i",
           imgName,
           "-vf",
-          "scale=1920:1080",
+          scaleFilter,
+          "-preset",
+          "veryfast",
           fileName
         );
       }
@@ -281,6 +339,38 @@ export const ExportPanel = ({
           </div>
         </div>
       )}
+
+      <div className="space-y-3 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Orientation</span>
+          <select
+            className="border rounded px-2 py-1 bg-background text-foreground text-xs"
+            value={orientation}
+            onChange={(e) => setOrientation(e.target.value as Orientation)}
+            disabled={loading}
+          >
+            <option value="landscape">Landscape 16:9</option>
+            <option value="vertical">Vertical 9:16</option>
+            <option value="square">Square 1:1</option>
+          </select>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground">Resolution</span>
+          <select
+            className="border rounded px-2 py-1 bg-background text-foreground text-xs"
+            value={resolution}
+            onChange={(e) => setResolution(e.target.value as ResolutionPreset)}
+            disabled={loading}
+          >
+            <option value="1080p">High (1080p)</option>
+            <option value="720p">Medium (720p)</option>
+            <option value="480p">Small (480p)</option>
+          </select>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Output size: {width} × {height}px
+        </p>
+      </div>
 
       <Button
         disabled={loading || items.length === 0}
