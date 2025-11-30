@@ -27,6 +27,7 @@ import logoImage from "@/assets/logo.png";
 import { getThemeById } from "@/lib/themes";
 import type { TransitionId } from "@/lib/transitions";
 import { Slider } from "@/components/ui/slider";
+import { generatePreviewForFile } from "@/lib/ffmpegPreview";
 
 const getVideoMetadata = (file: File): Promise<{
   duration: number;
@@ -47,7 +48,7 @@ const getVideoMetadata = (file: File): Promise<{
     };
 
     const onError = () => {
-      resolve({ duration: 0, width: 0, height: 0, url });
+      resolve({ duration: 0, width: 0, height: 0, url: "" });
     };
 
     video.addEventListener("loadedmetadata", onLoaded, { once: true });
@@ -309,14 +310,14 @@ const Index = () => {
   // IMAGE ADD
   const handleImagesAdded = useCallback(
     async (files: File[]) => {
-const newItems: MediaItem[] = files.map((file) => ({
-  id: Math.random().toString(36).slice(2),
-  file,
-  type: "image",
-  duration: 3,
-  thumbnail: URL.createObjectURL(file),
-  createdAt: file.lastModified,
-})) as any;
+      const newItems: MediaItem[] = files.map((file) => ({
+        id: Math.random().toString(36).slice(2),
+        file,
+        type: "image",
+        duration: 3,
+        thumbnail: URL.createObjectURL(file),
+        createdAt: file.lastModified,
+      })) as any;
 
       const hasNoImages =
         mediaItems.filter((i) => i.type === "image").length === 0;
@@ -336,28 +337,49 @@ const newItems: MediaItem[] = files.map((file) => ({
     [mediaItems, videoTitle, videoDescription, videoDate, createTitleCard]
   );
 
-  // VIDEO ADD – metaadat
+  // VIDEO ADD – metaadat + FFmpeg preview
   const handleVideosAdded = useCallback(async (files: File[]) => {
-    const metas = await Promise.all(files.map((file) => getVideoMetadata(file)));
+    if (!files.length) return;
+
+    const [metas, previews] = await Promise.all([
+      Promise.all(files.map((file) => getVideoMetadata(file))),
+      Promise.all(
+        files.map(async (file) => {
+          try {
+            return await generatePreviewForFile(file);
+          } catch {
+            return null;
+          }
+        })
+      ),
+    ]);
 
     const items = files.map<MediaItem>((file, index) => {
       const meta = metas[index];
+      const preview = previews[index];
+
       const duration =
         meta.duration && meta.duration > 0 ? meta.duration : undefined;
 
-return {
-  id: Math.random().toString(36).slice(2),
-  file,
-  type: "video",
-  duration,
-  videoLength: duration,
-  width: meta.width || undefined,
-  height: meta.height || undefined,
-  thumbnail: meta.url,
-  url: meta.url,
-  clips: [],
-  createdAt: file.lastModified,
-} as any;
+      const fallbackUrl =
+        preview?.previewUrl ||
+        meta.url ||
+        URL.createObjectURL(file);
+
+      return {
+        id: Math.random().toString(36).slice(2),
+        file,
+        type: "video",
+        duration,
+        videoLength: duration,
+        width: meta.width || undefined,
+        height: meta.height || undefined,
+        thumbnail: preview?.thumbnailUrl || meta.url || undefined,
+        url: fallbackUrl,
+        previewUrl: preview?.previewUrl,
+        clips: [],
+        createdAt: file.lastModified,
+      } as any;
     });
 
     setMediaItems((prev) => [...prev, ...items]);
