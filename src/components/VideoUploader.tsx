@@ -66,7 +66,7 @@ export const VideoUploader = ({ onFilesAdded }: VideoUploaderProps) => {
       <input
         type="file"
         multiple
-        accept="video/*"
+        accept=".mp4,.mov,.m4v,.3gp,.avi,.mts,.m2ts,video/*"
         onChange={handleFileInput}
         className="hidden"
         id="video-input"
