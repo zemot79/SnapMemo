@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { MediaItem } from "./Timeline";
 import { X, Scissors, Plus, Trash2, GripVertical } from "lucide-react";
 import { Button } from "./ui/button";
@@ -27,6 +27,20 @@ export const VideoEditor = ({
   );
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const localPreviewUrls = useMemo(() => {
+    const entries = videos
+      .filter((video) => !((video as any).previewUrl || video.url) && video.file)
+      .map((video) => [video.id, URL.createObjectURL(video.file as File)] as const);
+
+    return Object.fromEntries(entries);
+  }, [videos]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(localPreviewUrls).forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [localPreviewUrls]);
 
   const handleDragStart = (index: number) => {
     setDraggedIndex(index);
@@ -154,9 +168,7 @@ export const VideoEditor = ({
 
         // Itt preferáljuk az FFmpeg preview videót:
         const previewSrc =
-          (video as any).previewUrl ||
-          video.url ||
-          (video.file ? URL.createObjectURL(video.file) : "");
+          (video as any).previewUrl || video.url || localPreviewUrls[video.id] || "";
 
         return (
           <Card
