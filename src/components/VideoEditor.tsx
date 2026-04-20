@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MediaItem } from "./Timeline";
 import { X, Scissors, Plus, Trash2, GripVertical } from "lucide-react";
 import { Button } from "./ui/button";
@@ -27,20 +27,49 @@ export const VideoEditor = ({
   );
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const localPreviewUrlsRef = useRef<Record<string, string>>({});
+  const [localPreviewUrls, setLocalPreviewUrls] = useState<
+    Record<string, string>
+  >({});
 
-  const localPreviewUrls = useMemo(() => {
-    const entries = videos
-      .filter((video) => !((video as any).previewUrl || video.url) && video.file)
-      .map((video) => [video.id, URL.createObjectURL(video.file as File)] as const);
+  useEffect(() => {
+    const existing = localPreviewUrlsRef.current;
+    const next: Record<string, string> = {};
 
-    return Object.fromEntries(entries);
+    videos.forEach((video) => {
+      const needsLocalPreview =
+        !((video as any).previewUrl || video.url) && !!video.file;
+
+      if (!needsLocalPreview) {
+        return;
+      }
+
+      if (existing[video.id]) {
+        next[video.id] = existing[video.id];
+        return;
+      }
+
+      next[video.id] = URL.createObjectURL(video.file as File);
+    });
+
+    Object.entries(existing).forEach(([videoId, url]) => {
+      if (!next[videoId]) {
+        URL.revokeObjectURL(url);
+      }
+    });
+
+    localPreviewUrlsRef.current = next;
+    setLocalPreviewUrls(next);
   }, [videos]);
 
   useEffect(() => {
     return () => {
-      Object.values(localPreviewUrls).forEach((url) => URL.revokeObjectURL(url));
+      Object.values(localPreviewUrlsRef.current).forEach((url) => {
+        URL.revokeObjectURL(url);
+      });
+      localPreviewUrlsRef.current = {};
     };
-  }, [localPreviewUrls]);
+  }, []);
 
   const handleDragStart = (index: number) => {
     setDraggedIndex(index);
